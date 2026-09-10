@@ -43,4 +43,4 @@
 
 ## 技术注意
 
-旧代码 `AssignDishId` 把全表 ID 读进内存找空位，并发下分配重复 ID。改用数据库自增主键（`ValueGeneratedOnAdd`），不手写。
+菜品 ID 用数据库自增主键（`ValueGeneratedOnAdd`），不要手写「查全表找最小空位」那类逻辑——并发下会分配到重复 ID。

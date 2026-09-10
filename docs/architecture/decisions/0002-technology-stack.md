@@ -5,13 +5,13 @@
 
 ## 背景
 
-旧仓库（`Friedriceee/SoftwareTest`）：ASP.NET Core 6（已 EOL）、Oracle EF Core、Vue 3 + Vuex + Jest（未配置）。作为参考，不继续演进。新仓库从零搭结构。
+项目从零搭建，需要确定技术栈。团队成员熟悉 .NET 与 Vue，倾向在此基础上选用当前受支持的版本与工具。
 
 ## 决策
 
 | 方面 | 选择 | 理由 |
 |---|---|---|
-| 后端框架 | .NET 8（LTS） | 旧的 net6 已停止支持 |
+| 后端框架 | .NET 8（LTS） | 当前 LTS，长期支持 |
 | ORM / 数据库 | EF Core 8 + PostgreSQL | Oracle 在 Apple Silicon 上部署困难；Npgsql 一线支持；容器化简单 |
 | 前端 | Vue 3 + Vite + Element Plus | 延续团队已有技术，升级构建链 |
 | 前端状态 | Pinia（替代 Vuex） | Vue 3 官方推荐，API 更简单 |
