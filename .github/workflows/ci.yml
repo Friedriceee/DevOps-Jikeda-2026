@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+      - run: dotnet test --no-build -c Release --verbosity normal
+        # 测试用 SQLite in-memory，不需要真实数据库
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # TODO(前端骨架 PR): 本地跑一次 `npm install` 生成并提交 package-lock.json，
+      # 然后把下面换成 `npm ci`，并给 setup-node 加上 cache: 'npm'。
+      - run: npm install --no-audit --no-fund
+      - run: npm run test
+      - run: npm run build
+
+  security:
+    runs-on: ubuntu-latest
+    # 依赖漏洞扫描。先设为非阻断（continue-on-error），有基线后再改成必需。
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: .NET 依赖漏洞
+        working-directory: backend
+        run: |
+          dotnet restore
+          dotnet list package --vulnerable --include-transitive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: npm 依赖漏洞
+        working-directory: frontend
+        run: npm audit --audit-level=high

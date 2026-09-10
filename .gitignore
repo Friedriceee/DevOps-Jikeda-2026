@@ -1,0 +1,33 @@
+# ---------- OS / editor ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ---------- .NET ----------
+bin/
+obj/
+*.user
+[Bb]in/
+[Oo]bj/
+TestResults/
+*.coverage
+*.trx
+
+# local secrets — copy the .example file and fill in
+backend/src/TakeoutPlatform.Api/appsettings.Development.json
+
+# ---------- Node / Vite ----------
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- misc ----------
+*.log

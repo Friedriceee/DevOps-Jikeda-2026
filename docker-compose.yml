@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    container_name: takeout-db
+    environment:
+      POSTGRES_USER: takeout
+      POSTGRES_PASSWORD: takeout
+      POSTGRES_DB: takeout
+    ports:
+      - "5432:5432"
+    volumes:
+      - takeout-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U takeout"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  takeout-pgdata:
