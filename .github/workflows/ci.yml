@@ -60,4 +60,7 @@ jobs:
           node-version: '20'
       - name: npm 依赖漏洞
         working-directory: frontend
-        run: npm audit --audit-level=high
+        run: |
+          # 还没提交 package-lock.json，先临时生成一个供 audit 使用
+          npm install --package-lock-only --no-audit --no-fund
+          npm audit --audit-level=high
