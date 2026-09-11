@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 using NUnit.Framework;
 
 namespace TakeoutPlatform.Api.Tests;
@@ -14,7 +13,8 @@ public class HealthEndpointTests
     [Test]
     public async Task Health_returns_ok_wrapped_in_api_result()
     {
-        using var factory = new WebApplicationFactory<Program>();
+        using var factory = new ApiTestFactory();
+        factory.EnsureDatabase();
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync("/api/health");
