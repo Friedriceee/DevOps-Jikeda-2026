@@ -64,21 +64,21 @@ GET /api/merchant/{merchantId}/dishes
 
 > 鉴权第一周先跳过，`merchantId` 直接从请求里传。后续再引入登录态。
 
-### 编辑菜品（US-03，待实现）
+### 编辑菜品（US-03）
 
 ```
-PUT /api/merchant/dishes/{dishId}
+PUT /api/merchant/dishes/{dishId}?merchantId={merchantId}
 ```
 
-请求体同创建（不含 `merchantId`，从路径/校验里取）。响应结构同创建；`404` 覆盖「菜品不存在」和「菜品不属于该商家」两种情况。
+请求体同创建但不含 `merchantId`。由于第一阶段暂不接入登录鉴权，`merchantId` 通过查询参数传入，用于校验菜品归属。响应结构同创建；`404` 覆盖「菜品不存在」和「菜品不属于该商家」两种情况。
 
-### 下架/删除菜品（US-04，待实现）
+### 下架/删除菜品（US-04）
 
 ```
 DELETE /api/merchant/dishes/{dishId}?merchantId={merchantId}
 ```
 
-响应 `200`：`{ "success": true, "data": null, "message": null }`。`404` 同上。
+响应 `200`：`{ "success": true, "data": null, "message": null }`。`404` 同上。当前阶段的“下架”使用删除接口实现，后续接入菜品状态字段后可改为软删除。
 
 ## 第一周：商家满减活动
 

@@ -18,3 +18,8 @@ export function buildDishPayload(form, merchantId) {
     inventory: Number(form.inventory),
   }
 }
+
+export function buildDishUpdatePayload(form) {
+  const { merchantId: _merchantId, ...payload } = buildDishPayload(form, 0)
+  return payload
+}

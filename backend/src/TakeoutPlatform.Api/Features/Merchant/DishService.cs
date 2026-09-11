@@ -64,6 +64,52 @@ public sealed class DishService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<DishResponse?> UpdateAsync(
+        int dishId,
+        int merchantId,
+        UpdateDishRequest request,
+        CancellationToken cancellationToken)
+    {
+        var dish = await _db.Dishes
+            .SingleOrDefaultAsync(
+                item => item.Id == dishId && item.MerchantId == merchantId,
+                cancellationToken);
+
+        if (dish is null)
+        {
+            return null;
+        }
+
+        dish.Name = request.Name!.Trim();
+        dish.Price = request.Price;
+        dish.Category = string.IsNullOrWhiteSpace(request.Category) ? null : request.Category.Trim();
+        dish.ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim();
+        dish.Inventory = request.Inventory;
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return ToResponse(dish);
+    }
+
+    public async Task<bool> DeleteAsync(
+        int dishId,
+        int merchantId,
+        CancellationToken cancellationToken)
+    {
+        var dish = await _db.Dishes
+            .SingleOrDefaultAsync(
+                item => item.Id == dishId && item.MerchantId == merchantId,
+                cancellationToken);
+
+        if (dish is null)
+        {
+            return false;
+        }
+
+        _db.Dishes.Remove(dish);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private static DishResponse ToResponse(Dish dish) => new(
         dish.Id,
         dish.MerchantId,
