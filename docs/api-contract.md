@@ -63,3 +63,48 @@ GET /api/merchant/{merchantId}/dishes
 响应 `200`：`data` 为菜品数组，元素结构同上。
 
 > 鉴权第一周先跳过，`merchantId` 直接从请求里传。后续再引入登录态。
+
+### 编辑菜品（US-03，待实现）
+
+```
+PUT /api/merchant/dishes/{dishId}
+```
+
+请求体同创建（不含 `merchantId`，从路径/校验里取）。响应结构同创建；`404` 覆盖「菜品不存在」和「菜品不属于该商家」两种情况。
+
+### 下架/删除菜品（US-04，待实现）
+
+```
+DELETE /api/merchant/dishes/{dishId}?merchantId={merchantId}
+```
+
+响应 `200`：`{ "success": true, "data": null, "message": null }`。`404` 同上。
+
+## 第一周：商家满减活动
+
+> 实体为 `SpecialOffer`：`merchantId`、`minPrice`（满减门槛）、`amountRemission`（减免金额）。以下待 US-05～US-07 实现时按此契约落地，规则允许在开发中微调，改动需同步这里。
+
+### 新增满减活动（US-05）
+
+```
+POST /api/merchant/special-offers
+```
+
+请求体：`merchantId`（必填，商家须存在）、`minPrice`（必填，≥ 0）、`amountRemission`（必填，> 0 且 < `minPrice`）。响应结构同菜品创建。
+
+### 编辑 / 删除满减活动（US-06）
+
+```
+PUT    /api/merchant/special-offers/{offerId}
+DELETE /api/merchant/special-offers/{offerId}?merchantId={merchantId}
+```
+
+规则同新增；`404` 覆盖不存在 / 不属于该商家。
+
+### 查看某商家的满减活动列表（US-07）
+
+```
+GET /api/merchant/{merchantId}/special-offers
+```
+
+响应 `200`：`data` 为活动数组。
