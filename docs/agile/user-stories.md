@@ -14,6 +14,11 @@
 
 详见 [../analysis-design/US-01-merchant-create-dish.md](../analysis-design/US-01-merchant-create-dish.md)。
 
+### US-02 商家查看、编辑和下架菜品
+> 作为商家，我想查看、编辑和下架我的菜品，以便及时维护菜单内容。
+
+详见 [../analysis-design/US-02-merchant-manage-dish.md](../analysis-design/US-02-merchant-manage-dish.md)。
+
 ## Backlog（未细化）
 
 - US-02 商家查看/编辑/下架菜品

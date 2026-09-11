@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildDishPayload, isValidDishName, isValidInventory } from '@/utils/dish'
+import {
+  buildDishPayload,
+  buildDishUpdatePayload,
+  isValidDishName,
+  isValidInventory,
+} from '@/utils/dish'
 
 describe('dish form helpers', () => {
   it('rejects empty or overlong names', () => {
@@ -30,6 +35,22 @@ describe('dish form helpers', () => {
       category: 'Main',
       imageUrl: null,
       inventory: 8,
+    })
+  })
+
+  it('builds an update payload without merchantId', () => {
+    expect(buildDishUpdatePayload({
+      name: '  Rice  ',
+      price: '8.5',
+      category: '',
+      imageUrl: 'https://example.com/rice.png',
+      inventory: '4',
+    })).toEqual({
+      name: 'Rice',
+      price: 8.5,
+      category: null,
+      imageUrl: 'https://example.com/rice.png',
+      inventory: 4,
     })
   })
 })

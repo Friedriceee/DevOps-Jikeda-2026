@@ -1,9 +1,9 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useMerchantStore } from '@/stores/merchant'
-import { createDish, listDishes } from '@/api/merchant'
-import { buildDishPayload, isValidDishName, isValidInventory } from '@/utils/dish'
+import { createDish, deleteDish, listDishes, updateDish } from '@/api/merchant'
+import { buildDishPayload, buildDishUpdatePayload, isValidDishName, isValidInventory } from '@/utils/dish'
 import { formatYuan, isValidPrice } from '@/utils/money'
 
 const merchantStore = useMerchantStore()
@@ -11,6 +11,7 @@ const formRef = ref()
 const dishes = ref([])
 const loading = ref(false)
 const submitting = ref(false)
+const editingDishId = ref(null)
 
 const form = reactive({
   name: '',
@@ -81,18 +82,59 @@ function resetForm() {
   formRef.value?.clearValidate()
 }
 
+function startEdit(dish) {
+  editingDishId.value = dish.id
+  form.name = dish.name
+  form.price = dish.price
+  form.category = dish.category ?? ''
+  form.imageUrl = dish.imageUrl ?? ''
+  form.inventory = dish.inventory
+  formRef.value?.clearValidate()
+}
+
+function cancelEdit() {
+  editingDishId.value = null
+  resetForm()
+}
+
 async function submit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
   submitting.value = true
   try {
-    await createDish(buildDishPayload(form, merchantStore.merchantId))
-    ElMessage.success('菜品创建成功')
+    if (editingDishId.value) {
+      await updateDish(
+        editingDishId.value,
+        merchantStore.merchantId,
+        buildDishUpdatePayload(form),
+      )
+      ElMessage.success('菜品更新成功')
+      editingDishId.value = null
+    } else {
+      await createDish(buildDishPayload(form, merchantStore.merchantId))
+      ElMessage.success('菜品创建成功')
+    }
     resetForm()
     await loadDishes()
   } finally {
     submitting.value = false
+  }
+}
+
+async function removeDish(dish) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要下架并删除“${dish.name}”吗？`,
+      '确认下架菜品',
+      { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' },
+    )
+    await deleteDish(dish.id, merchantStore.merchantId)
+    if (editingDishId.value === dish.id) cancelEdit()
+    ElMessage.success('菜品已下架')
+    await loadDishes()
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') throw error
   }
 }
 
@@ -110,7 +152,7 @@ onMounted(loadDishes)
     </div>
 
     <el-card class="form-card" shadow="never">
-      <template #header>Create Dish</template>
+      <template #header>{{ editingDishId ? 'Edit Dish' : 'Create Dish' }}</template>
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent="submit">
         <div class="form-grid">
           <el-form-item label="Name" prop="name">
@@ -129,7 +171,10 @@ onMounted(loadDishes)
             <el-input v-model="form.imageUrl" placeholder="Optional http/https URL" />
           </el-form-item>
         </div>
-        <el-button type="primary" :loading="submitting" @click="submit">Create Dish</el-button>
+        <el-button type="primary" :loading="submitting" @click="submit">
+          {{ editingDishId ? 'Save Changes' : 'Create Dish' }}
+        </el-button>
+        <el-button v-if="editingDishId" :disabled="submitting" @click="cancelEdit">Cancel</el-button>
       </el-form>
     </el-card>
 
@@ -146,6 +191,12 @@ onMounted(loadDishes)
           <template #default="scope">
             <a v-if="scope.row.imageUrl" :href="scope.row.imageUrl" target="_blank" rel="noreferrer">Open image</a>
             <span v-else>—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="Actions" width="180" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" @click="startEdit(scope.row)">Edit</el-button>
+            <el-button link type="danger" @click="removeDish(scope.row)">Delist</el-button>
           </template>
         </el-table-column>
       </el-table>
