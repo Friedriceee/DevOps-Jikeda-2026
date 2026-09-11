@@ -82,7 +82,7 @@ DELETE /api/merchant/dishes/{dishId}?merchantId={merchantId}
 
 ## 第一周：商家满减活动
 
-> 实体为 `SpecialOffer`：`merchantId`、`minPrice`（满减门槛）、`amountRemission`（减免金额）。以下待 US-05～US-07 实现时按此契约落地，规则允许在开发中微调，改动需同步这里。
+> 实体为 `SpecialOffer`：`merchantId`、`minPrice`（满减门槛）、`amountRemission`（减免金额）。以下接口按此契约落地。
 
 ### 新增满减活动（US-05）
 
@@ -90,16 +90,16 @@ DELETE /api/merchant/dishes/{dishId}?merchantId={merchantId}
 POST /api/merchant/special-offers
 ```
 
-请求体：`merchantId`（必填，商家须存在）、`minPrice`（必填，≥ 0）、`amountRemission`（必填，> 0 且 < `minPrice`）。响应结构同菜品创建。
+请求体：`merchantId`（必填，商家须存在）、`minPrice`（必填，> 0，最多两位小数且不超过 `9999999999999999.99`）、`amountRemission`（必填，> 0，最多两位小数且不超过 `9999999999999999.99`，并且 < `minPrice`）。响应结构同菜品创建。
 
 ### 编辑 / 删除满减活动（US-06）
 
 ```
-PUT    /api/merchant/special-offers/{offerId}
+PUT    /api/merchant/special-offers/{offerId}?merchantId={merchantId}
 DELETE /api/merchant/special-offers/{offerId}?merchantId={merchantId}
 ```
 
-规则同新增；`404` 覆盖不存在 / 不属于该商家。
+PUT 请求体只包含 `minPrice` 和 `amountRemission`，`merchantId` 通过查询参数传入用于校验活动归属；规则同新增，且更新不能改变活动所属商家。`404` 覆盖不存在 / 不属于该商家。
 
 ### 查看某商家的满减活动列表（US-07）
 

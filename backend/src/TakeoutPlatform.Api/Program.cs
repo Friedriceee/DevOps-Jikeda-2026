@@ -32,6 +32,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<DishService>();
+builder.Services.AddScoped<SpecialOfferService>();
 
 const string DevCors = "dev-cors";
 builder.Services.AddCors(options =>
