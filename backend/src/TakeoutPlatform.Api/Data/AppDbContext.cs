@@ -9,6 +9,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Merchant> Merchants => Set<Merchant>();
     public DbSet<Dish> Dishes => Set<Dish>();
+    public DbSet<SpecialOffer> SpecialOffers => Set<SpecialOffer>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,6 +44,21 @@ public class AppDbContext : DbContext
             entity.HasOne(dish => dish.Merchant)
                 .WithMany(merchant => merchant.Dishes)
                 .HasForeignKey(dish => dish.MerchantId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SpecialOffer>(entity =>
+        {
+            entity.Property(offer => offer.MinPrice)
+                .HasPrecision(18, 2);
+            entity.Property(offer => offer.AmountRemission)
+                .HasPrecision(18, 2);
+
+            entity.HasIndex(offer => offer.MerchantId);
+
+            entity.HasOne(offer => offer.Merchant)
+                .WithMany(merchant => merchant.SpecialOffers)
+                .HasForeignKey(offer => offer.MerchantId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

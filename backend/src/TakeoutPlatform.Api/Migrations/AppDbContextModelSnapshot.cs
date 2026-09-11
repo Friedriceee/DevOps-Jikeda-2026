@@ -71,6 +71,29 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
             b.HasData(new { Id = 1, Name = "Demo Merchant" });
         });
 
+        modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.SpecialOffer", b =>
+        {
+            b.Property<int>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("integer")
+                .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+
+            b.Property<decimal>("AmountRemission")
+                .HasPrecision(18, 2)
+                .HasColumnType("numeric(18,2)");
+
+            b.Property<int>("MerchantId")
+                .HasColumnType("integer");
+
+            b.Property<decimal>("MinPrice")
+                .HasPrecision(18, 2)
+                .HasColumnType("numeric(18,2)");
+
+            b.HasKey("Id");
+            b.HasIndex("MerchantId");
+            b.ToTable("SpecialOffers");
+        });
+
         modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.Dish", b =>
         {
             b.HasOne("TakeoutPlatform.Api.Features.Merchant.Merchant", "Merchant")
@@ -85,6 +108,18 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
         modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.Merchant", b =>
         {
             b.Navigation("Dishes");
+            b.Navigation("SpecialOffers");
+        });
+
+        modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.SpecialOffer", b =>
+        {
+            b.HasOne("TakeoutPlatform.Api.Features.Merchant.Merchant", "Merchant")
+                .WithMany("SpecialOffers")
+                .HasForeignKey("MerchantId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+
+            b.Navigation("Merchant");
         });
     }
 }
