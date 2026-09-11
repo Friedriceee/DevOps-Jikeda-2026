@@ -9,7 +9,7 @@
 
 | Story | 估点 | 状态 |
 |---|---|---|
-| US-01 商家创建菜品 | 5 | In Review（PR #17） |
+| US-01 商家创建菜品 | 5 | Done（PR #17 已合并） |
 | US-02 商家查看菜品列表 | 2 | Done（随 US-01 一起实现） |
 | US-03 商家编辑菜品 | 3 | Todo |
 | US-04 商家下架/删除菜品 | 2 | Todo |
@@ -23,8 +23,8 @@
 ## 合并顺序
 
 1. 初始架构提交已含 backend/frontend 骨架
-2. US-01 走 `feat/us-01-merchant-create-dish` → PR #17（含 US-02 的查询接口），review 中，CI 有两处配置问题待修
-3. US-03/US-04（菜品）、US-05～US-07（满减）在 PR #17 合入后各自开 `feat/*` 分支
+2. US-01 走 `feat/us-01-merchant-create-dish` → PR #17（含 US-02 的查询接口）→ **已合并**，CI 配置问题已修
+3. US-03/US-04（菜品）、US-05～US-07（满减）各自开 `feat/*` 分支，基于 main 上已有的 `Dish`/`DishController`/`DishService` 继续
 
 ## 任务拆分（5+ 人）
 
@@ -54,7 +54,7 @@
 - [x] 前端菜品页能填表单创建、列表刷新
 - [ ] `main` 分支保护开启（需在 GitHub 网页确认）
 - [x] backend / frontend CI job 绿
-- [ ] PR #17 的 CI 问题修复（`security`、`setup-node` cache 路径）
+- [x] PR #17 的 CI 问题修复（`security`、`setup-node` cache 路径）——已在合并前修好
 - [ ] 后端 ≥8 用例、前端 ≥6 用例（覆盖菜品 + 满减两块）
 - [ ] `docs/api-contract.md` 补齐满减接口，与实现一致
 
