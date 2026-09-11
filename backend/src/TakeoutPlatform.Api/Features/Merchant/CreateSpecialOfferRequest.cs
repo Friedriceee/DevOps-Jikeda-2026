@@ -17,6 +17,8 @@ public sealed class CreateSpecialOfferRequest : IValidatableObject
 }
 internal static class SpecialOfferRequestValidation
 {
+    public const decimal MaximumAmount = 9999999999999999.99m;
+
     public static IEnumerable<ValidationResult> ValidateAmounts(
         decimal minPrice,
         decimal amountRemission)
@@ -25,6 +27,12 @@ internal static class SpecialOfferRequestValidation
         {
             yield return new ValidationResult(
                 "minPrice 必须大于 0",
+                new[] { nameof(CreateSpecialOfferRequest.MinPrice) });
+        }
+        else if (minPrice > MaximumAmount)
+        {
+            yield return new ValidationResult(
+                "minPrice 超出允许范围",
                 new[] { nameof(CreateSpecialOfferRequest.MinPrice) });
         }
         else if (minPrice != decimal.Round(minPrice, 2))
@@ -38,6 +46,12 @@ internal static class SpecialOfferRequestValidation
         {
             yield return new ValidationResult(
                 "amountRemission 必须大于 0",
+                new[] { nameof(CreateSpecialOfferRequest.AmountRemission) });
+        }
+        else if (amountRemission > MaximumAmount)
+        {
+            yield return new ValidationResult(
+                "amountRemission 超出允许范围",
                 new[] { nameof(CreateSpecialOfferRequest.AmountRemission) });
         }
         else if (amountRemission != decimal.Round(amountRemission, 2))

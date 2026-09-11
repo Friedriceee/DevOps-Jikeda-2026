@@ -13,11 +13,14 @@ describe('special offer form helpers', () => {
 
   it('rejects zero, negative, equal, greater, non-numeric, and over-precision values', () => {
     expect(isValidSpecialOffer(0, 1)).toBe(false)
+    expect(isValidSpecialOffer(-1, 1)).toBe(false)
     expect(isValidSpecialOffer(50, 0)).toBe(false)
+    expect(isValidSpecialOffer(50, -1)).toBe(false)
     expect(isValidSpecialOffer(50, 50)).toBe(false)
     expect(isValidSpecialOffer(50, 60)).toBe(false)
     expect(isValidSpecialOffer('x', 1)).toBe(false)
     expect(isValidSpecialOffer(50.001, 5)).toBe(false)
+    expect(isValidSpecialOffer(50, 5.001)).toBe(false)
   })
 
   it('builds a numeric create payload', () => {

@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TakeoutPlatform.Api.Data;
+using TakeoutPlatform.Api.Features.Merchant;
 
 namespace TakeoutPlatform.Api.Tests;
 
@@ -31,6 +32,12 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
+        db.Merchants.Add(new Merchant
+        {
+            Id = 2,
+            Name = "Second Test Merchant",
+        });
+        db.SaveChanges();
     }
 
     protected override void Dispose(bool disposing)

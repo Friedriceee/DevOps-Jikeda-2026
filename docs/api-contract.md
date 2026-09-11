@@ -90,7 +90,7 @@ DELETE /api/merchant/dishes/{dishId}?merchantId={merchantId}
 POST /api/merchant/special-offers
 ```
 
-请求体：`merchantId`（必填，商家须存在）、`minPrice`（必填，> 0，最多两位小数）、`amountRemission`（必填，> 0，最多两位小数且 < `minPrice`）。响应结构同菜品创建。
+请求体：`merchantId`（必填，商家须存在）、`minPrice`（必填，> 0，最多两位小数且不超过 `9999999999999999.99`）、`amountRemission`（必填，> 0，最多两位小数且不超过 `9999999999999999.99`，并且 < `minPrice`）。响应结构同菜品创建。
 
 ### 编辑 / 删除满减活动（US-06）
 
