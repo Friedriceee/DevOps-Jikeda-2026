@@ -116,6 +116,125 @@ public class DishEndpointTests
         Assert.That(body?.Message, Is.EqualTo("商家不存在"));
     }
 
+    [Test]
+    public async Task Update_dish_returns_updated_fields()
+    {
+        var created = await CreateDishAsync(name: "Noodles", price: 12.50m, inventory: 8);
+
+        var response = await _client.PutAsJsonAsync($"/api/merchant/dishes/{created.Id}", new
+        {
+            merchantId = 1,
+            name = "Noodles (Large)",
+            price = 15.00m,
+            category = "Main",
+            inventory = 20,
+        });
+
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<DishDto>>();
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(body?.Success, Is.True);
+        Assert.That(body?.Data?.Name, Is.EqualTo("Noodles (Large)"));
+        Assert.That(body?.Data?.Price, Is.EqualTo(15.00m));
+        Assert.That(body?.Data?.Inventory, Is.EqualTo(20));
+    }
+
+    [Test]
+    public async Task Update_dish_with_invalid_price_returns_bad_request()
+    {
+        var created = await CreateDishAsync();
+
+        var response = await _client.PutAsJsonAsync($"/api/merchant/dishes/{created.Id}", new
+        {
+            merchantId = 1,
+            name = "Noodles",
+            price = 0m,
+            inventory = 8,
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [Test]
+    public async Task Update_nonexistent_dish_returns_not_found()
+    {
+        var response = await _client.PutAsJsonAsync("/api/merchant/dishes/999", new
+        {
+            merchantId = 1,
+            name = "Ghost Dish",
+            price = 10.00m,
+            inventory = 1,
+        });
+
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(body?.Message, Is.EqualTo("菜品不存在"));
+    }
+
+    [Test]
+    public async Task Update_dish_owned_by_another_merchant_returns_not_found()
+    {
+        var created = await CreateDishAsync();
+
+        var response = await _client.PutAsJsonAsync($"/api/merchant/dishes/{created.Id}", new
+        {
+            merchantId = 999,
+            name = "Hijacked",
+            price = 10.00m,
+            inventory = 1,
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+    }
+
+    [Test]
+    public async Task Delete_dish_removes_it_from_the_list()
+    {
+        var created = await CreateDishAsync();
+
+        var response = await _client.DeleteAsync($"/api/merchant/dishes/{created.Id}?merchantId=1");
+        var listResponse = await _client.GetFromJsonAsync<ApiResponse<List<DishDto>>>("/api/merchant/1/dishes");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(listResponse?.Data, Is.Empty);
+    }
+
+    [Test]
+    public async Task Delete_nonexistent_dish_returns_not_found()
+    {
+        var response = await _client.DeleteAsync("/api/merchant/dishes/999?merchantId=1");
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+        Assert.That(body?.Message, Is.EqualTo("菜品不存在"));
+    }
+
+    [Test]
+    public async Task Delete_without_merchant_id_returns_bad_request()
+    {
+        var created = await CreateDishAsync();
+
+        var response = await _client.DeleteAsync($"/api/merchant/dishes/{created.Id}");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    private async Task<DishDto> CreateDishAsync(
+        string name = "Kung Pao Chicken", decimal price = 28.00m, int inventory = 100)
+    {
+        var response = await _client.PostAsJsonAsync("/api/merchant/dishes", new
+        {
+            merchantId = 1,
+            name,
+            price,
+            inventory,
+        });
+
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<DishDto>>();
+        return body!.Data!;
+    }
+
     private sealed record ApiResponse<T>(bool Success, T? Data, string? Message);
     private sealed record DishDto(int Id, int MerchantId, string Name, decimal Price, string? Category, string? ImageUrl, int Inventory);
 }

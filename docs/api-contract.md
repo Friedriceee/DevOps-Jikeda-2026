@@ -64,15 +64,15 @@ GET /api/merchant/{merchantId}/dishes
 
 > 鉴权第一周先跳过，`merchantId` 直接从请求里传。后续再引入登录态。
 
-### 编辑菜品（US-03，待实现）
+### 编辑菜品（US-03）
 
 ```
 PUT /api/merchant/dishes/{dishId}
 ```
 
-请求体同创建（不含 `merchantId`，从路径/校验里取）。响应结构同创建；`404` 覆盖「菜品不存在」和「菜品不属于该商家」两种情况。
+请求体同创建（含 `merchantId`，用于校验菜品归属）。响应结构同创建；`404` 覆盖「菜品不存在」和「菜品不属于该商家」两种情况，不区分返回，避免探测其他商家的菜品 ID。
 
-### 下架/删除菜品（US-04，待实现）
+### 下架/删除菜品（US-04）
 
 ```
 DELETE /api/merchant/dishes/{dishId}?merchantId={merchantId}

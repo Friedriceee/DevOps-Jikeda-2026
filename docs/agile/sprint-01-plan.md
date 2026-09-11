@@ -11,8 +11,8 @@
 |---|---|---|
 | US-01 商家创建菜品 | 5 | Done（PR #17 已合并） |
 | US-02 商家查看菜品列表 | 2 | Done（随 US-01 一起实现） |
-| US-03 商家编辑菜品 | 3 | Todo |
-| US-04 商家下架/删除菜品 | 2 | Todo |
+| US-03 商家编辑菜品 | 3 | In Review |
+| US-04 商家下架/删除菜品 | 2 | In Review |
 | US-05 商家新增满减活动 | 3 | Todo |
 | US-06 商家编辑/删除满减活动 | 2 | Todo |
 | US-07 商家查看满减活动列表 | 1 | Todo |
@@ -31,9 +31,9 @@
 | # | 角色 | 范围 | 产出 | 依赖 |
 |---|---|---|---|---|
 | 1 | 后端骨架 | 技术任务 | ✅ 已完成：EF Migration、`AppDbContext`、DI、Swagger、`/api/health` | — |
-| 2 | 后端-菜品 | US-01～US-04 | ✅ `CreateDish`/`GetDishes`（PR #17）；待做 `EditDish`、`DeleteDish` | #1 |
+| 2 | 后端-菜品 | US-01～US-04 | ✅ `CreateDish`/`GetDishes`（PR #17）；✅ `UpdateDish`/`DeleteDish`（PR 待开） | #1 |
 | 3 | 前端骨架 | 技术任务 | ✅ 已完成：路由/布局、`http.js`、Element Plus、`.env` | — |
-| 4 | 前端-菜品 | US-01～US-04 | ✅ 创建+列表页（PR #17）；待做编辑表单、下架/删除确认交互 | #3 |
+| 4 | 前端-菜品 | US-01～US-04 | ✅ 创建+列表页（PR #17）；✅ 编辑弹窗 + 下架确认交互（PR 待开） | #3 |
 | 5 | 后端-满减 | US-05～US-07 | `SpecialOffer` 实体 + Migration、Create/Edit/Delete/List 接口 | #1 |
 | 6 | 前端-满减 | US-05～US-07 | 满减活动页面：新建/编辑/删除/列表，`api/merchant.js` 补方法 | #3 |
 | 7 | 契约 + 环境 | 全部 | 维护 `docs/api-contract.md`（补满减接口契约）、review PR #17 | — |
@@ -49,7 +49,7 @@
 - [x] `docker compose up` 起库，后端连上、Swagger 打开
 - [x] `POST /api/merchant/dishes` 创建成功 + 校验分支返回统一结构（PR #17）
 - [x] `GET /api/merchant/{id}/dishes` 返回列表（PR #17）
-- [ ] 菜品可编辑、可下架/删除，前后端均校验
+- [x] 菜品可编辑、可下架/删除，前后端均校验（分支 `feat/us-03-04-dish-edit-delete`，待合并）
 - [ ] 满减活动可新增/编辑/删除/查看，前后端均校验
 - [x] 前端菜品页能填表单创建、列表刷新
 - [ ] `main` 分支保护开启（需在 GitHub 网页确认）

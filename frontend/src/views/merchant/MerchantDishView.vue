@@ -1,8 +1,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useMerchantStore } from '@/stores/merchant'
-import { createDish, listDishes } from '@/api/merchant'
+import { createDish, deleteDish, listDishes, updateDish } from '@/api/merchant'
 import { buildDishPayload, isValidDishName, isValidInventory } from '@/utils/dish'
 import { formatYuan, isValidPrice } from '@/utils/money'
 
@@ -19,6 +19,19 @@ const form = reactive({
   imageUrl: '',
   inventory: 0,
 })
+
+const editDialogVisible = ref(false)
+const editFormRef = ref()
+const editSubmitting = ref(false)
+const editingDishId = ref(null)
+const editForm = reactive({
+  name: '',
+  price: null,
+  category: '',
+  imageUrl: '',
+  inventory: 0,
+})
+const deletingId = ref(null)
 
 const rules = {
   name: [
@@ -96,6 +109,58 @@ async function submit() {
   }
 }
 
+function openEdit(row) {
+  editingDishId.value = row.id
+  editForm.name = row.name
+  editForm.price = row.price
+  editForm.category = row.category ?? ''
+  editForm.imageUrl = row.imageUrl ?? ''
+  editForm.inventory = row.inventory
+  editDialogVisible.value = true
+  editFormRef.value?.clearValidate()
+}
+
+function closeEdit() {
+  editDialogVisible.value = false
+  editingDishId.value = null
+}
+
+async function submitEdit() {
+  const valid = await editFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  editSubmitting.value = true
+  try {
+    await updateDish(editingDishId.value, buildDishPayload(editForm, merchantStore.merchantId))
+    ElMessage.success('菜品已更新')
+    closeEdit()
+    await loadDishes()
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+async function removeDish(row) {
+  try {
+    await ElMessageBox.confirm(`确认下架「${row.name}」？此操作不可撤销。`, '下架菜品', {
+      type: 'warning',
+      confirmButtonText: '下架',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return // 用户取消
+  }
+
+  deletingId.value = row.id
+  try {
+    await deleteDish(row.id, merchantStore.merchantId)
+    ElMessage.success('菜品已下架')
+    await loadDishes()
+  } finally {
+    deletingId.value = null
+  }
+}
+
 onMounted(loadDishes)
 </script>
 
@@ -148,9 +213,49 @@ onMounted(loadDishes)
             <span v-else>—</span>
           </template>
         </el-table-column>
+        <el-table-column label="Actions" width="160" fixed="right">
+          <template #default="scope">
+            <el-button size="small" @click="openEdit(scope.row)">Edit</el-button>
+            <el-button
+              size="small"
+              type="danger"
+              plain
+              :loading="deletingId === scope.row.id"
+              @click="removeDish(scope.row)"
+            >
+              Remove
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <el-empty v-if="!loading && dishes.length === 0" description="No dishes yet" />
     </el-card>
+
+    <el-dialog v-model="editDialogVisible" title="Edit Dish" width="520px" @close="closeEdit">
+      <el-form ref="editFormRef" :model="editForm" :rules="rules" label-position="top" @submit.prevent="submitEdit">
+        <div class="form-grid">
+          <el-form-item label="Name" prop="name">
+            <el-input v-model="editForm.name" maxlength="50" show-word-limit placeholder="Dish name" />
+          </el-form-item>
+          <el-form-item label="Price" prop="price">
+            <el-input-number v-model="editForm.price" :min="0.01" :precision="2" :step="0.5" controls-position="right" />
+          </el-form-item>
+          <el-form-item label="Category" prop="category">
+            <el-input v-model="editForm.category" maxlength="20" show-word-limit placeholder="Optional" />
+          </el-form-item>
+          <el-form-item label="Inventory" prop="inventory">
+            <el-input-number v-model="editForm.inventory" :min="0" :step="1" controls-position="right" />
+          </el-form-item>
+          <el-form-item class="wide-item" label="Image URL" prop="imageUrl">
+            <el-input v-model="editForm.imageUrl" placeholder="Optional http/https URL" />
+          </el-form-item>
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeEdit">Cancel</el-button>
+        <el-button type="primary" :loading="editSubmitting" @click="submitEdit">Save</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
