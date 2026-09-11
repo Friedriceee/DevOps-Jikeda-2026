@@ -35,9 +35,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # TODO(前端骨架 PR): 本地跑一次 `npm install` 生成并提交 package-lock.json，
-      # 然后把下面换成 `npm ci`，并给 setup-node 加上 cache: 'npm'。
-      - run: npm install --no-audit --no-fund
+          cache: 'npm'
+      - run: npm ci --no-audit --no-fund
       - run: npm run test
       - run: npm run build
 
@@ -61,6 +60,4 @@ jobs:
       - name: npm 依赖漏洞
         working-directory: frontend
         run: |
-          # 还没提交 package-lock.json，先临时生成一个供 audit 使用
-          npm install --package-lock-only --no-audit --no-fund
           npm audit --audit-level=high
