@@ -53,4 +53,3 @@ public partial class CreateSpecialOffers : Migration
         migrationBuilder.DropTable(name: "SpecialOffers");
     }
 }
-

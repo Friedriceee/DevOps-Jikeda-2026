@@ -107,4 +107,3 @@ public sealed class SpecialOfferService
         offer.MinPrice,
         offer.AmountRemission);
 }
-

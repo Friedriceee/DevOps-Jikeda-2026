@@ -15,7 +15,6 @@ public sealed class CreateSpecialOfferRequest : IValidatableObject
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
         SpecialOfferRequestValidation.ValidateAmounts(MinPrice, AmountRemission);
 }
-
 internal static class SpecialOfferRequestValidation
 {
     public static IEnumerable<ValidationResult> ValidateAmounts(
@@ -60,4 +59,3 @@ internal static class SpecialOfferRequestValidation
         }
     }
 }
-

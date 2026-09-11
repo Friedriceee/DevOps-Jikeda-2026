@@ -95,4 +95,3 @@ public sealed class SpecialOfferController : ControllerBase
             : Ok(ApiResult<IReadOnlyList<SpecialOfferResponse>>.Ok(offers));
     }
 }
-

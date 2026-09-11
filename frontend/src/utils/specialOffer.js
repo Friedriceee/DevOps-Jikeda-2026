@@ -2,7 +2,6 @@ function toNumber(value) {
   const text = String(value ?? '').trim()
   return text === '' ? Number.NaN : Number(text)
 }
-
 function hasAtMostTwoDecimals(value) {
   return Number(value.toFixed(2)) === value
 }
@@ -34,4 +33,3 @@ export function buildSpecialOfferUpdatePayload(form) {
     amountRemission: toNumber(form.amountRemission),
   }
 }
-

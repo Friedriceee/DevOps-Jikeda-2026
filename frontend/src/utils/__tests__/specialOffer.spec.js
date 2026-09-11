@@ -41,4 +41,3 @@ describe('special offer form helpers', () => {
     })
   })
 })
-

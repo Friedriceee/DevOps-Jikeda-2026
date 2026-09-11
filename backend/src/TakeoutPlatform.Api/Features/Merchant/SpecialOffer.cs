@@ -9,4 +9,3 @@ public class SpecialOffer
 
     public Merchant Merchant { get; set; } = null!;
 }
-

@@ -5,4 +5,3 @@ public sealed record SpecialOfferResponse(
     int MerchantId,
     decimal MinPrice,
     decimal AmountRemission);
-

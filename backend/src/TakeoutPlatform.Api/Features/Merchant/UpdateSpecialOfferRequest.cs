@@ -11,4 +11,3 @@ public sealed class UpdateSpecialOfferRequest : IValidatableObject
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
         SpecialOfferRequestValidation.ValidateAmounts(MinPrice, AmountRemission);
 }
-

@@ -187,4 +187,3 @@ public class SpecialOfferEndpointTests
         decimal MinPrice,
         decimal AmountRemission);
 }
-
