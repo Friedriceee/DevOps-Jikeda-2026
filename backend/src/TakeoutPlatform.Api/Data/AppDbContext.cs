@@ -21,6 +21,14 @@ public class AppDbContext : DbContext
             entity.Property(merchant => merchant.Name)
                 .HasMaxLength(100)
                 .IsRequired();
+            entity.Property(merchant => merchant.Username).HasMaxLength(50);
+            entity.HasIndex(merchant => merchant.Username).IsUnique();
+            entity.Property(merchant => merchant.PasswordHash).HasMaxLength(500);
+            entity.Property(merchant => merchant.Address).HasMaxLength(255);
+            entity.Property(merchant => merchant.Contact).HasMaxLength(255);
+            entity.Property(merchant => merchant.DishType).HasMaxLength(20);
+            entity.Property(merchant => merchant.WalletPasswordHash).HasMaxLength(500);
+            entity.Property(merchant => merchant.Wallet).HasPrecision(18, 2);
 
             entity.HasData(new Merchant
             {

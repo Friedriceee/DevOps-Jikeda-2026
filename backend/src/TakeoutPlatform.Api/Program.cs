@@ -33,6 +33,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddScoped<DishService>();
 builder.Services.AddScoped<SpecialOfferService>();
+builder.Services.AddScoped<MerchantRegistrationService>();
 
 const string DevCors = "dev-cors";
 builder.Services.AddCors(options =>
