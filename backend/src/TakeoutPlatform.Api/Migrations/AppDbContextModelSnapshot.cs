@@ -56,10 +56,21 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
 
         modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.Merchant", b =>
         {
+            b.Property<string>("Address").HasMaxLength(255).HasColumnType("character varying(255)");
+            b.Property<string>("Contact").HasMaxLength(255).HasColumnType("character varying(255)");
+            b.Property<int>("CouponType").HasColumnType("integer");
+            b.Property<string>("DishType").HasMaxLength(20).HasColumnType("character varying(20)");
             b.Property<int>("Id")
                 .ValueGeneratedOnAdd()
                 .HasColumnType("integer")
                 .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+
+            b.Property<string>("PasswordHash").HasMaxLength(500).HasColumnType("character varying(500)");
+            b.Property<int?>("TimeForCloseBusiness").HasColumnType("integer");
+            b.Property<int?>("TimeForOpenBusiness").HasColumnType("integer");
+            b.Property<string>("Username").HasMaxLength(50).HasColumnType("character varying(50)");
+            b.Property<decimal>("Wallet").HasPrecision(18, 2).HasColumnType("numeric(18,2)");
+            b.Property<string>("WalletPasswordHash").HasMaxLength(500).HasColumnType("character varying(500)");
 
             b.Property<string>("Name")
                 .IsRequired()
@@ -67,6 +78,7 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
                 .HasColumnType("character varying(100)");
 
             b.HasKey("Id");
+            b.HasIndex("Username").IsUnique();
             b.ToTable("Merchants");
             b.HasData(new { Id = 1, Name = "Demo Merchant" });
         });
