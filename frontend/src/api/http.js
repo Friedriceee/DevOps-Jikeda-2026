@@ -1,29 +1,66 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import router from '@/router'
+import { useAuthStore } from '@/stores/auth'
 
 const http = axios.create({
   baseURL: import.meta.env.VITE_API_BASE ?? '/api',
   timeout: 10000,
 })
 
+export function addBearerToken(config, token) {
+  const headers = config.headers ?? (config.headers = {})
+  if (token) headers.Authorization = `Bearer ${token}`
+  return config
+}
+
+export function unwrapApiResponse(response, notify = () => {}) {
+  const body = response.data
+  if (body && typeof body === 'object' && 'success' in body) {
+    if (!body.success) {
+      const message = body.message || '请求失败'
+      notify(message)
+      const error = new Error(message)
+      error.userNotified = true
+      throw error
+    }
+    return body.data
+  }
+  return body
+}
+
+export function handleApiError(error, { authStore, router, notify = () => {} }) {
+  if (error.response?.status === 401) {
+    authStore.clearSession()
+    notify('登录已失效，请重新登录')
+    error.userNotified = true
+    if (router.currentRoute.value.name !== 'login') {
+      router.push({
+        name: 'login',
+        query: { redirect: router.currentRoute.value.fullPath },
+      })
+    }
+  } else {
+    notify(error.response?.data?.message || '网络错误，请稍后重试')
+    error.userNotified = true
+  }
+  return Promise.reject(error)
+}
+
+// 请求拦截：为需要登录的接口自动附加 JWT
+http.interceptors.request.use((config) => {
+  const authStore = useAuthStore()
+  return addBearerToken(config, authStore.token)
+})
+
 // 响应拦截：拆掉统一响应外壳，失败时弹提示
 http.interceptors.response.use(
-  (response) => {
-    const body = response.data
-    if (body && typeof body === 'object' && 'success' in body) {
-      if (!body.success) {
-        ElMessage.error(body.message || '请求失败')
-        return Promise.reject(new Error(body.message || '请求失败'))
-      }
-      return body.data
-    }
-    return body
-  },
-  (error) => {
-    const msg = error.response?.data?.message || '网络错误，请稍后重试'
-    ElMessage.error(msg)
-    return Promise.reject(error)
-  },
+  (response) => unwrapApiResponse(response, (message) => ElMessage.error(message)),
+  (error) => handleApiError(error, {
+    authStore: useAuthStore(),
+    router,
+    notify: (message) => ElMessage.error(message),
+  }),
 )
 
 export default http
