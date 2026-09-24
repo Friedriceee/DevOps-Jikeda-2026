@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/auth/LoginView.vue'
 import { useAuthStore } from '@/stores/auth'
+import { authGuard } from './guards'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView },
@@ -25,24 +26,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const authStore = useAuthStore()
-
-  if (to.name === 'login' && authStore.isAuthenticated) {
-    return { name: 'customer-merchants' }
-  }
-
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return {
-      name: 'login',
-      query: { redirect: to.fullPath },
-    }
-  }
-
-  if (to.meta.role && !authStore.hasRole(to.meta.role)) {
-    return { name: 'home' }
-  }
-
-  return true
+  return authGuard(useAuthStore(), to)
 })
 
 export default router
