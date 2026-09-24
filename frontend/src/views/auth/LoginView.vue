@@ -11,14 +11,14 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const form = reactive({
-  account: '',
+  username: '',
   password: '',
 })
 const loading = ref(false)
 
 function validate() {
-  if (!form.account.trim()) {
-    ElMessage.warning('请输入账号')
+  if (!form.username.trim()) {
+    ElMessage.warning('请输入用户名')
     return false
   }
   if (!form.password) {
@@ -34,7 +34,7 @@ async function submit() {
   loading.value = true
   try {
     const session = await login({
-      account: form.account.trim(),
+      username: form.username.trim(),
       password: form.password,
     })
     authStore.setSession(session)
@@ -58,8 +58,8 @@ async function submit() {
       </template>
 
       <el-form label-position="top" @submit.prevent="submit">
-        <el-form-item label="账号">
-          <el-input v-model="form.account" autocomplete="username" placeholder="请输入账号" />
+        <el-form-item label="用户名">
+          <el-input v-model="form.username" autocomplete="username" placeholder="请输入用户名" />
         </el-form-item>
         <el-form-item label="密码">
           <el-input

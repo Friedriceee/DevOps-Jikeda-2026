@@ -22,5 +22,6 @@ onMounted(async () => {
     <p>第一周开发「商家创建菜品」。</p>
     <el-button @click="router.push('/customer/merchants')">Browse Merchants and Menu</el-button>
     <el-button type="primary" @click="router.push('/merchant/dishes')">Open Merchant Dish Management</el-button>
+    <el-button type="success" @click="router.push('/merchant/special-offers')">Open Special Offer Management</el-button>
   </div>
 </template>

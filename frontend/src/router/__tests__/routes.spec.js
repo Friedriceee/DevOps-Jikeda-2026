@@ -11,4 +11,15 @@ describe('application route access rules', () => {
     const customerRoute = routes.find((route) => route.name === 'customer-merchants')
     expect(customerRoute.meta.requiresAuth).toBe(false)
   })
+
+  it('retains the main branch special-offer and order routes with role restrictions', () => {
+    expect(routes.find((route) => route.name === 'merchant-special-offers').meta).toEqual({
+      requiresAuth: true,
+      role: 'Merchant',
+    })
+    expect(routes.find((route) => route.name === 'user-orders').meta).toEqual({
+      requiresAuth: true,
+      role: 'Customer',
+    })
+  })
 })

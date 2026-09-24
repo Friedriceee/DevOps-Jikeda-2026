@@ -8,6 +8,18 @@ export const routes = [
     meta: { requiresAuth: true, role: 'Merchant' },
   },
   {
+    path: '/merchant/special-offers',
+    name: 'merchant-special-offers',
+    component: () => import('@/views/merchant/MerchantSpecialOfferView.vue'),
+    meta: { requiresAuth: true, role: 'Merchant' },
+  },
+  {
+    path: '/user/orders',
+    name: 'user-orders',
+    component: () => import('@/views/user/OrderView.vue'),
+    meta: { requiresAuth: true, role: 'Customer' },
+  },
+  {
     path: '/customer/merchants',
     name: 'customer-merchants',
     component: () => import('@/views/customer/MerchantBrowseView.vue'),

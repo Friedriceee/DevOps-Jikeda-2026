@@ -16,6 +16,26 @@
 
 HTTP 状态码：成功 `200`（创建 `201`）、参数错误 `400`、未找到 `404`、服务端异常 `500`。
 
+## Iteration 2 认证与授权
+
+### 顾客注册
+
+`POST /api/auth/customer/register`，请求体：`username`（3–50 字符，全局唯一且忽略大小写）、`password`（8–100 字符）、`displayName`（必填，最多 50 字符）、`phoneNumber`（8–11 位数字）。成功返回 `201`，`data` 包含 `accountId`、`customerId`、`username`、`displayName`；重复用户名返回 `409`。
+
+### 统一登录
+
+`POST /api/auth/login`，请求体：`username`、`password`。顾客和商家使用同一接口。成功返回 `200`，`data` 包含 `accessToken`、`expiresAtUtc`、`accountId`、`role`、`profileId`；凭据错误返回 `401`。JWT 包含 `sub`（Account ID）、`role` 和 `profile_id`，密钥从 `Jwt__Key` 环境变量或部署 Secret 注入，长度至少 32 字节。
+
+### RBAC 与资源归属
+
+受保护接口使用 `Authorization: Bearer <token>`。未携带有效 token 返回 `401`，角色无权访问返回 `403`。商家菜品和满减活动的写接口只允许 `Merchant`；顾客地址和订单接口只允许 `Customer`。服务端以 JWT 的 `profile_id` 为身份依据，请求中的 `merchantId` / `userId` 仅为旧客户端兼容字段，不能改变访问主体。商家菜品与满减列表继续允许匿名浏览。
+
+## US-08 商家注册
+
+`POST /api/merchant/register`，请求体：`username`（3–50 字符，唯一）、`password`（6–100 字符）、`merchantName`（必填）、`merchantAddress`（必填）、`contact`（必填）、`dishType`（可选）、`timeForOpenBusiness` 和 `timeForCloseBusiness`（当天秒数，0–86399）、`walletPassword`（6–100 字符）。
+
+成功返回 `201` 和统一响应，`data` 仅含 `id`、`username`、`merchantName`；重复用户名返回 `409`，无效输入返回 `400`。密码及钱包密码仅以哈希值存储，不在响应中返回。钱包与优惠券类型初始化为 0。现有演示商家没有注册账号字段，仍可用于原有菜品和活动接口。
+
 ## 第一周：商家创建菜品
 
 ### 创建菜品
@@ -29,7 +49,7 @@ Content-Type: application/json
 
 | 字段 | 类型 | 必填 | 规则 |
 |---|---|---|---|
-| merchantId | int | 是 | 商家必须存在 |
+| merchantId | int | 否 | 旧客户端兼容字段；实际商家身份取自 JWT `profile_id` |
 | name | string | 是 | 1–50 字符 |
 | price | decimal | 是 | > 0，最多两位小数 |
 | category | string | 否 | ≤ 20 字符 |
@@ -67,22 +87,22 @@ GET /api/merchant/{merchantId}/dishes
 ### 编辑菜品（US-03）
 
 ```
-PUT /api/merchant/dishes/{dishId}?merchantId={merchantId}
+PUT /api/merchant/dishes/{dishId}
 ```
 
-请求体同创建但不含 `merchantId`。由于第一阶段暂不接入登录鉴权，`merchantId` 通过查询参数传入，用于校验菜品归属。响应结构同创建；`404` 覆盖「菜品不存在」和「菜品不属于该商家」两种情况。
+请求体同创建但不含 `merchantId`。商家身份由 JWT `profile_id` 确定，用于校验菜品归属。响应结构同创建；`404` 覆盖「菜品不存在」和「菜品不属于当前商家」两种情况。
 
 ### 下架/删除菜品（US-04）
 
 ```
-DELETE /api/merchant/dishes/{dishId}?merchantId={merchantId}
+DELETE /api/merchant/dishes/{dishId}
 ```
 
 响应 `200`：`{ "success": true, "data": null, "message": null }`。`404` 同上。当前阶段的“下架”使用删除接口实现，后续接入菜品状态字段后可改为软删除。
 
 ## 第一周：商家满减活动
 
-> 实体为 `SpecialOffer`：`merchantId`、`minPrice`（满减门槛）、`amountRemission`（减免金额）。以下待 US-05～US-07 实现时按此契约落地，规则允许在开发中微调，改动需同步这里。
+> 实体为 `SpecialOffer`：`merchantId`、`minPrice`（满减门槛）、`amountRemission`（减免金额）。以下接口按此契约落地。
 
 ### 新增满减活动（US-05）
 
@@ -90,16 +110,16 @@ DELETE /api/merchant/dishes/{dishId}?merchantId={merchantId}
 POST /api/merchant/special-offers
 ```
 
-请求体：`merchantId`（必填，商家须存在）、`minPrice`（必填，≥ 0）、`amountRemission`（必填，> 0 且 < `minPrice`）。响应结构同菜品创建。
+请求体：`merchantId`（必填，商家须存在）、`minPrice`（必填，> 0，最多两位小数且不超过 `9999999999999999.99`）、`amountRemission`（必填，> 0，最多两位小数且不超过 `9999999999999999.99`，并且 < `minPrice`）。响应结构同菜品创建。
 
 ### 编辑 / 删除满减活动（US-06）
 
 ```
 PUT    /api/merchant/special-offers/{offerId}
-DELETE /api/merchant/special-offers/{offerId}?merchantId={merchantId}
+DELETE /api/merchant/special-offers/{offerId}
 ```
 
-规则同新增；`404` 覆盖不存在 / 不属于该商家。
+PUT 请求体只包含 `minPrice` 和 `amountRemission`，商家身份由 JWT `profile_id` 确定；规则同新增，且更新不能改变活动所属商家。`404` 覆盖不存在 / 不属于当前商家。
 
 ### 查看某商家的满减活动列表（US-07）
 

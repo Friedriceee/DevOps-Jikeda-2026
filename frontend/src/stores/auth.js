@@ -27,7 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     token.value = accessToken
     user.value = {
-      id: session.userId ?? session.id ?? null,
+      id: session.accountId ?? session.userId ?? session.id ?? null,
       role: session.role ?? null,
       profileId: session.profileId ?? null,
       displayName: session.displayName ?? session.username ?? null,

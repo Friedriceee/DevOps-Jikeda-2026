@@ -9,8 +9,8 @@ import { login } from '@/api/auth'
 describe('authentication API', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('posts the account and password to the login endpoint', async () => {
-    const payload = { account: 'alice', password: 'secret' }
+  it('posts the username and password to the login endpoint', async () => {
+    const payload = { username: 'alice', password: 'secret' }
     http.post.mockResolvedValueOnce({ accessToken: 'jwt-token' })
 
     await expect(login(payload)).resolves.toEqual({ accessToken: 'jwt-token' })

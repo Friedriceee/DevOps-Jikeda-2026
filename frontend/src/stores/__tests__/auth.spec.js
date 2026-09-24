@@ -30,7 +30,7 @@ describe('auth store', () => {
 
     store.setSession({
       accessToken: 'jwt-token',
-      userId: 7,
+      accountId: 7,
       role: 'Customer',
       profileId: 12,
       displayName: 'Alice',

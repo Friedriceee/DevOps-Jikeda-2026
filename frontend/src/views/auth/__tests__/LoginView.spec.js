@@ -74,14 +74,14 @@ describe('LoginView', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(mocks.login).not.toHaveBeenCalled()
-    expect(mocks.messageWarning).toHaveBeenCalledWith('请输入账号')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('请输入用户名')
   })
 
   it('logs in, saves the session, and returns to the requested page', async () => {
     mocks.route.query = { redirect: '/customer/cart' }
     mocks.login.mockResolvedValueOnce({
       accessToken: 'jwt-token',
-      userId: 7,
+      accountId: 7,
       role: 'Customer',
       profileId: 12,
     })
@@ -92,7 +92,7 @@ describe('LoginView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(mocks.login).toHaveBeenCalledWith({ account: 'alice', password: 'secret' })
+    expect(mocks.login).toHaveBeenCalledWith({ username: 'alice', password: 'secret' })
     expect(useAuthStore().token).toBe('jwt-token')
     expect(mocks.replace).toHaveBeenCalledWith('/customer/cart')
     expect(mocks.messageSuccess).toHaveBeenCalledWith('登录成功')
