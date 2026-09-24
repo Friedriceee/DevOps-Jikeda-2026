@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using TakeoutPlatform.Api.Common;
 using TakeoutPlatform.Api.Data;
 using TakeoutPlatform.Api.Features.Merchant;
+using TakeoutPlatform.Api.Features.User;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<DishService>();
 builder.Services.AddScoped<SpecialOfferService>();
 builder.Services.AddScoped<MerchantRegistrationService>();
+builder.Services.AddScoped<AddressService>();
+builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.OrderService>();
 
 const string DevCors = "dev-cors";
 builder.Services.AddCors(options =>
