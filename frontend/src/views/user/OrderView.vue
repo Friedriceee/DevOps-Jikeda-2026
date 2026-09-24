@@ -58,7 +58,7 @@ async function placeOrder() {
     })
     await createOrder(payload)
     ElMessage.success('下单成功')
-    cart.clear()
+    await cart.clear()
     await loadOrders()
   } finally {
     submitting.value = false
@@ -81,6 +81,7 @@ async function removeOrder(order) {
 }
 
 onMounted(async () => {
+  await cart.load()
   await loadAddresses()
   await loadOrders()
 })

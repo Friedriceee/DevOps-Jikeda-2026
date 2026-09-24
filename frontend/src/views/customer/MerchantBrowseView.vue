@@ -1,9 +1,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listMerchantMenu, listMerchants } from '@/api/customer'
+import { useCartStore } from '@/stores/cart'
 import { formatYuan } from '@/utils/money'
 
+const router = useRouter()
+const cart = useCartStore()
 const merchants = ref([])
 const dishes = ref([])
 const selectedMerchant = ref(null)
@@ -11,6 +15,7 @@ const merchantsLoading = ref(false)
 const menuLoading = ref(false)
 const loadError = ref('')
 const menuError = ref('')
+const addingDishId = ref(null)
 
 const visibleDishes = computed(() => dishes.value.filter((dish) => dish.isActive !== false))
 
@@ -49,9 +54,15 @@ function showPromotion(merchant) {
   return merchant.promotionInfo || merchant.specialOffer?.description || ''
 }
 
-function handleAddToCart(dish) {
+async function handleAddToCart(dish) {
   if (isSoldOut(dish)) return
-  ElMessage.info('购物车功能将在本 Sprint 的后续功能中接入')
+  addingDishId.value = dish.id
+  try {
+    await cart.addItem(dish)
+    ElMessage.success('已加入购物车')
+  } finally {
+    addingDishId.value = null
+  }
 }
 
 onMounted(loadMerchants)
@@ -64,7 +75,12 @@ onMounted(loadMerchants)
         <h1>Browse Merchants and Menu</h1>
         <p>查看商家和可售菜品</p>
       </div>
-      <el-button :loading="merchantsLoading" @click="loadMerchants">Refresh</el-button>
+      <div class="heading-actions">
+        <el-button @click="router.push({ name: 'customer-cart' })">
+          购物车{{ cart.totalCount ? ` (${cart.totalCount})` : '' }}
+        </el-button>
+        <el-button :loading="merchantsLoading" @click="loadMerchants">Refresh</el-button>
+      </div>
     </div>
 
     <el-alert v-if="loadError" :title="loadError" type="error" show-icon />
@@ -119,7 +135,8 @@ onMounted(loadMerchants)
                   <el-button
                     size="small"
                     type="primary"
-                    :disabled="isSoldOut(dish)"
+                    :disabled="isSoldOut(dish) || addingDishId === dish.id"
+                    :loading="addingDishId === dish.id"
                     @click="handleAddToCart(dish)"
                   >
                     加入购物车
@@ -145,6 +162,7 @@ onMounted(loadMerchants)
 <style scoped>
 .browse-page { max-width: 1180px; margin: 0 auto; }
 .page-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.heading-actions { display: flex; gap: 8px; }
 .page-heading h1 { margin: 0; }
 .page-heading p { color: #6b7280; margin: 6px 0 0; }
 .content-grid { margin-top: 18px; }

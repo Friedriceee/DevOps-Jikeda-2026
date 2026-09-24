@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.User;
 using TakeoutPlatform.Api.Features.Auth;
+using TakeoutPlatform.Api.Features.Cart;
 using Order = TakeoutPlatform.Api.Features.Order.Order;
 using OrderUser = TakeoutPlatform.Api.Features.Order.OrderUser;
 using OrderRider = TakeoutPlatform.Api.Features.Order.OrderRider;
@@ -25,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderRider> OrderRiders => Set<OrderRider>();
     public DbSet<OrderDish> OrderDishes => Set<OrderDish>();
     public DbSet<OrderCoupon> OrderCoupons => Set<OrderCoupon>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -131,6 +133,23 @@ public class AppDbContext : DbContext
             entity.HasOne(address => address.User)
                 .WithMany(user => user.Addresses)
                 .HasForeignKey(address => address.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CartItem>(entity =>
+        {
+            entity.Property(item => item.DishNum).IsRequired();
+            entity.HasIndex(item => new { item.UserId, item.DishId }).IsUnique();
+            entity.HasIndex(item => item.MerchantId);
+
+            entity.HasOne(item => item.User)
+                .WithMany(user => user.CartItems)
+                .HasForeignKey(item => item.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(item => item.Dish)
+                .WithMany()
+                .HasForeignKey(item => item.DishId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -2,10 +2,12 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MerchantBrowseView from '@/views/customer/MerchantBrowseView.vue'
 
-const { listMerchants, listMerchantMenu, messageInfo } = vi.hoisted(() => ({
+const { listMerchants, listMerchantMenu, addItem, messageSuccess, push } = vi.hoisted(() => ({
   listMerchants: vi.fn(),
   listMerchantMenu: vi.fn(),
-  messageInfo: vi.fn(),
+  addItem: vi.fn(),
+  messageSuccess: vi.fn(),
+  push: vi.fn(),
 }))
 
 vi.mock('@/api/customer', () => ({
@@ -13,8 +15,14 @@ vi.mock('@/api/customer', () => ({
   listMerchantMenu,
 }))
 
+vi.mock('@/stores/cart', () => ({
+  useCartStore: () => ({ totalCount: 0, addItem }),
+}))
+
+vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
+
 vi.mock('element-plus', () => ({
-  ElMessage: { info: messageInfo },
+  ElMessage: { success: messageSuccess },
 }))
 
 const stubs = {
@@ -65,7 +73,7 @@ describe('MerchantBrowseView', () => {
     expect(wrapper.text()).toContain('Spend $20, save $3')
   })
 
-  it('disables sold-out dishes and only handles add-to-cart for available dishes', async () => {
+  it('disables sold-out dishes and adds only available dishes to the persistent cart', async () => {
     const wrapper = shallowMount(MerchantBrowseView, { global: { stubs } })
     await flushPromises()
 
@@ -75,8 +83,10 @@ describe('MerchantBrowseView', () => {
     expect(addButtons[1].attributes('disabled')).toBeDefined()
 
     await addButtons[0].trigger('click')
+    await flushPromises()
     await addButtons[1].trigger('click')
-    expect(messageInfo).toHaveBeenCalledOnce()
+    expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ id: 11, name: 'Available Noodles' }))
+    expect(messageSuccess).toHaveBeenCalledWith('已加入购物车')
   })
 
   it('shows a useful message when the menu request fails', async () => {
