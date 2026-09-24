@@ -13,6 +13,11 @@ const routes = [
     name: 'merchant-special-offers',
     component: () => import('@/views/merchant/MerchantSpecialOfferView.vue'),
   },
+  {
+    path: '/user/orders',
+    name: 'user-orders',
+    component: () => import('@/views/user/OrderView.vue'),
+  },
 ]
 
 export default createRouter({
