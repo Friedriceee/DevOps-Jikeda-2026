@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { login } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { postLoginDestination } from '@/router/guards'
 
 const router = useRouter()
 const route = useRoute()
@@ -39,9 +40,7 @@ async function submit() {
     authStore.setSession(session)
     ElMessage.success('登录成功')
 
-    const redirect = typeof route.query.redirect === 'string'
-      ? route.query.redirect
-      : '/customer/merchants'
+    const redirect = postLoginDestination(route.query.redirect, authStore.role)
     await router.replace(redirect)
   } catch (error) {
     if (!error?.userNotified) ElMessage.error('登录失败，请稍后重试')

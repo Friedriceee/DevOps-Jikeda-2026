@@ -110,6 +110,18 @@ describe('LoginView', () => {
     expect(mocks.replace).toHaveBeenCalledWith('/customer/merchants')
   })
 
+  it('uses the merchant management page as the default destination for merchants', async () => {
+    mocks.login.mockResolvedValueOnce({ accessToken: 'merchant-token', role: 'Merchant' })
+    const wrapper = mount(LoginView, { global: { stubs } })
+    const inputs = wrapper.findAll('input')
+    await inputs[0].setValue('merchant')
+    await inputs[1].setValue('secret')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(mocks.replace).toHaveBeenCalledWith('/merchant/dishes')
+  })
+
   it('keeps the form usable when login fails', async () => {
     mocks.login.mockRejectedValueOnce(new Error('Invalid credentials'))
     const wrapper = mount(LoginView, { global: { stubs } })
