@@ -9,8 +9,7 @@ namespace TakeoutPlatform.Api.Features.User;
 /// </summary>
 public sealed class CreateAddressRequest
 {
-    [Required(ErrorMessage = "userId 不能为空")]
-    [Range(1, int.MaxValue, ErrorMessage = "userId 必须大于 0")]
+    // 兼容旧客户端字段；Controller 始终以 JWT profile_id 覆盖它。
     public int UserId { get; set; }
 
     [Required(ErrorMessage = "address 不能为空")]

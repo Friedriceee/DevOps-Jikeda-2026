@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using NUnit.Framework;
+using TakeoutPlatform.Api.Features.Auth;
 
 namespace TakeoutPlatform.Api.Tests;
 
@@ -13,6 +14,7 @@ public class OrderEndpointTests
 {
     private ApiTestFactory _factory = null!;
     private HttpClient _client = null!;
+    private HttpClient _merchantClient = null!;
 
     private const int MerchantId = 1;
     private const int UserId = 1;
@@ -22,19 +24,21 @@ public class OrderEndpointTests
     {
         _factory = new ApiTestFactory();
         _factory.EnsureDatabase();
-        _client = _factory.CreateClient();
+        _client = _factory.CreateAuthenticatedClient(AccountRole.Customer, UserId);
+        _merchantClient = _factory.CreateAuthenticatedClient(AccountRole.Merchant, MerchantId);
     }
 
     [TearDown]
     public void TearDown()
     {
         _client.Dispose();
+        _merchantClient.Dispose();
         _factory.Dispose();
     }
 
     private async Task<int> CreateDishAsync(int inventory, decimal price = 10.00m)
     {
-        var response = await _client.PostAsJsonAsync("/api/merchant/dishes", new
+        var response = await _merchantClient.PostAsJsonAsync("/api/merchant/dishes", new
         {
             merchantId = MerchantId,
             name = "Endpoint Dish",

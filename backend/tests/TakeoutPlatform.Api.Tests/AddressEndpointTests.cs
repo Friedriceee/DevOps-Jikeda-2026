@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using NUnit.Framework;
+using TakeoutPlatform.Api.Features.Auth;
 
 namespace TakeoutPlatform.Api.Tests;
 
@@ -21,7 +22,7 @@ public class AddressEndpointTests
     {
         _factory = new ApiTestFactory();
         _factory.EnsureDatabase();
-        _client = _factory.CreateClient();
+        _client = _factory.CreateAuthenticatedClient(AccountRole.Customer, UserId);
     }
 
     [TearDown]
@@ -73,7 +74,8 @@ public class AddressEndpointTests
     [Test]
     public async Task Create_address_for_missing_user_returns_not_found()
     {
-        var response = await _client.PostAsJsonAsync("/api/user/addresses", new
+        using var missingUserClient = _factory.CreateAuthenticatedClient(AccountRole.Customer, 999);
+        var response = await missingUserClient.PostAsJsonAsync("/api/user/addresses", new
         {
             userId = 999,
             address = "Nowhere",
