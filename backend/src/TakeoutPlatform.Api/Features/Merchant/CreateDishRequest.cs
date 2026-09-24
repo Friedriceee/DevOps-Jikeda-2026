@@ -20,8 +20,7 @@ public sealed class CreateDishRequest : IValidatableObject
     [Range(0, int.MaxValue, ErrorMessage = "inventory 不能小于 0")]
     public int Inventory { get; set; }
 
-    [Required(ErrorMessage = "merchantId 不能为空")]
-    [Range(1, int.MaxValue, ErrorMessage = "merchantId 必须大于 0")]
+    // 兼容旧客户端字段；Controller 始终以 JWT profile_id 覆盖它。
     public int MerchantId { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TakeoutPlatform.Api.Common;
+using TakeoutPlatform.Api.Features.Auth;
 
 namespace TakeoutPlatform.Api.Features.Merchant;
 
@@ -12,10 +14,12 @@ public sealed class DishController : ControllerBase
     public DishController(DishService dishService) => _dishService = dishService;
 
     [HttpPost("dishes")]
+    [Authorize(Roles = nameof(AccountRole.Merchant))]
     public async Task<ActionResult<ApiResult<DishResponse>>> Create(
         [FromBody] CreateDishRequest request,
         CancellationToken cancellationToken)
     {
+        request.MerchantId = User.GetProfileId();
         var result = await _dishService.CreateAsync(request, cancellationToken);
 
         if (!result.MerchantFound)
@@ -45,20 +49,15 @@ public sealed class DishController : ControllerBase
     }
 
     [HttpPut("dishes/{dishId:int}")]
+    [Authorize(Roles = nameof(AccountRole.Merchant))]
     public async Task<ActionResult<ApiResult<DishResponse>>> Update(
         int dishId,
-        [FromQuery] int merchantId,
         [FromBody] UpdateDishRequest request,
         CancellationToken cancellationToken)
     {
-        if (merchantId <= 0)
-        {
-            return BadRequest(ApiResult<DishResponse>.Fail("merchantId 必须大于 0"));
-        }
-
         var dish = await _dishService.UpdateAsync(
             dishId,
-            merchantId,
+            User.GetProfileId(),
             request,
             cancellationToken);
 
@@ -68,19 +67,14 @@ public sealed class DishController : ControllerBase
     }
 
     [HttpDelete("dishes/{dishId:int}")]
+    [Authorize(Roles = nameof(AccountRole.Merchant))]
     public async Task<ActionResult<ApiResult<object>>> Delete(
         int dishId,
-        [FromQuery] int merchantId,
         CancellationToken cancellationToken)
     {
-        if (merchantId <= 0)
-        {
-            return BadRequest(ApiResult<object>.Fail("merchantId 必须大于 0"));
-        }
-
         var deleted = await _dishService.DeleteAsync(
             dishId,
-            merchantId,
+            User.GetProfileId(),
             cancellationToken);
 
         if (!deleted)

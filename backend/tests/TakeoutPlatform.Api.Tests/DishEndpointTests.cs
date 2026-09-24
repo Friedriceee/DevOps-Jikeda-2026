@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using NUnit.Framework;
+using TakeoutPlatform.Api.Features.Auth;
 
 namespace TakeoutPlatform.Api.Tests;
 
@@ -14,7 +15,7 @@ public class DishEndpointTests
     {
         _factory = new ApiTestFactory();
         _factory.EnsureDatabase();
-        _client = _factory.CreateClient();
+        _client = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 1);
     }
 
     [TearDown]
@@ -111,7 +112,8 @@ public class DishEndpointTests
         });
         var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<DishDto>>();
 
-        var response = await _client.PutAsJsonAsync(
+        using var otherMerchant = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 2);
+        var response = await otherMerchant.PutAsJsonAsync(
             $"/api/merchant/dishes/{created!.Data!.Id}?merchantId=999",
             new
             {
@@ -161,7 +163,8 @@ public class DishEndpointTests
         });
         var created = await createResponse.Content.ReadFromJsonAsync<ApiResponse<DishDto>>();
 
-        var response = await _client.DeleteAsync(
+        using var otherMerchant = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 2);
+        var response = await otherMerchant.DeleteAsync(
             $"/api/merchant/dishes/{created!.Data!.Id}?merchantId=999");
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
 
@@ -228,7 +231,8 @@ public class DishEndpointTests
     [Test]
     public async Task Missing_merchant_returns_not_found()
     {
-        var response = await _client.PostAsJsonAsync("/api/merchant/dishes", new
+        using var missingMerchant = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 999);
+        var response = await missingMerchant.PostAsJsonAsync("/api/merchant/dishes", new
         {
             merchantId = 999,
             name = "Dish",

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using NUnit.Framework;
+using TakeoutPlatform.Api.Features.Auth;
 
 namespace TakeoutPlatform.Api.Tests;
 
@@ -14,7 +15,7 @@ public class SpecialOfferEndpointTests
     {
         _factory = new ApiTestFactory();
         _factory.EnsureDatabase();
-        _client = _factory.CreateClient();
+        _client = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 1);
     }
 
     [TearDown]
@@ -47,7 +48,8 @@ public class SpecialOfferEndpointTests
     [Test]
     public async Task Create_offer_for_missing_merchant_returns_not_found()
     {
-        var response = await _client.PostAsJsonAsync("/api/merchant/special-offers", new
+        using var missingMerchant = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 999);
+        var response = await missingMerchant.PostAsJsonAsync("/api/merchant/special-offers", new
         {
             merchantId = 999,
             minPrice = 50.00m,
@@ -121,7 +123,8 @@ public class SpecialOfferEndpointTests
     {
         var offerId = await CreateOfferAsync();
 
-        var response = await _client.PutAsJsonAsync(
+        using var otherMerchant = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 2);
+        var response = await otherMerchant.PutAsJsonAsync(
             $"/api/merchant/special-offers/{offerId}?merchantId=2",
             new
             {
@@ -172,7 +175,8 @@ public class SpecialOfferEndpointTests
     {
         var offerId = await CreateOfferAsync();
 
-        var response = await _client.DeleteAsync(
+        using var otherMerchant = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 2);
+        var response = await otherMerchant.DeleteAsync(
             $"/api/merchant/special-offers/{offerId}?merchantId=2");
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
 
@@ -184,7 +188,9 @@ public class SpecialOfferEndpointTests
     public async Task List_offers_returns_only_the_requested_merchants_offers()
     {
         var firstMerchantOfferId = await CreateOfferAsync(50.00m, 5.00m, merchantId: 1);
-        var secondMerchantOfferId = await CreateOfferAsync(80.00m, 8.00m, merchantId: 2);
+        using var secondMerchant = _factory.CreateAuthenticatedClient(AccountRole.Merchant, 2);
+        var secondMerchantOfferId = await CreateOfferAsync(
+            80.00m, 8.00m, merchantId: 2, client: secondMerchant);
 
         var firstResponse = await _client.GetAsync("/api/merchant/1/special-offers");
         var firstBody = await firstResponse.Content.ReadFromJsonAsync<ApiResponse<List<SpecialOfferDto>>>();
@@ -206,9 +212,10 @@ public class SpecialOfferEndpointTests
     private async Task<int> CreateOfferAsync(
         decimal minPrice = 50.00m,
         decimal amountRemission = 5.00m,
-        int merchantId = 1)
+        int merchantId = 1,
+        HttpClient? client = null)
     {
-        var response = await _client.PostAsJsonAsync("/api/merchant/special-offers", new
+        var response = await (client ?? _client).PostAsJsonAsync("/api/merchant/special-offers", new
         {
             merchantId,
             minPrice,

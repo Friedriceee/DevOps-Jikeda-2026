@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TakeoutPlatform.Api.Common;
+using TakeoutPlatform.Api.Features.Auth;
 
 namespace TakeoutPlatform.Api.Features.Merchant;
 
@@ -13,10 +15,12 @@ public sealed class SpecialOfferController : ControllerBase
         _specialOfferService = specialOfferService;
 
     [HttpPost("special-offers")]
+    [Authorize(Roles = nameof(AccountRole.Merchant))]
     public async Task<ActionResult<ApiResult<SpecialOfferResponse>>> Create(
         [FromBody] CreateSpecialOfferRequest request,
         CancellationToken cancellationToken)
     {
+        request.MerchantId = User.GetProfileId();
         var result = await _specialOfferService.CreateAsync(request, cancellationToken);
 
         if (!result.MerchantFound)
@@ -31,20 +35,15 @@ public sealed class SpecialOfferController : ControllerBase
     }
 
     [HttpPut("special-offers/{offerId:int}")]
+    [Authorize(Roles = nameof(AccountRole.Merchant))]
     public async Task<ActionResult<ApiResult<SpecialOfferResponse>>> Update(
         int offerId,
-        [FromQuery] int merchantId,
         [FromBody] UpdateSpecialOfferRequest request,
         CancellationToken cancellationToken)
     {
-        if (merchantId <= 0)
-        {
-            return BadRequest(ApiResult<SpecialOfferResponse>.Fail("merchantId 必须大于 0"));
-        }
-
         var offer = await _specialOfferService.UpdateAsync(
             offerId,
-            merchantId,
+            User.GetProfileId(),
             request,
             cancellationToken);
 
@@ -54,19 +53,14 @@ public sealed class SpecialOfferController : ControllerBase
     }
 
     [HttpDelete("special-offers/{offerId:int}")]
+    [Authorize(Roles = nameof(AccountRole.Merchant))]
     public async Task<ActionResult<ApiResult<object>>> Delete(
         int offerId,
-        [FromQuery] int merchantId,
         CancellationToken cancellationToken)
     {
-        if (merchantId <= 0)
-        {
-            return BadRequest(ApiResult<object>.Fail("merchantId 必须大于 0"));
-        }
-
         var deleted = await _specialOfferService.DeleteAsync(
             offerId,
-            merchantId,
+            User.GetProfileId(),
             cancellationToken);
 
         if (!deleted)

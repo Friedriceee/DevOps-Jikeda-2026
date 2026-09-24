@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TakeoutPlatform.Api.Common;
+using TakeoutPlatform.Api.Features.Auth;
 
 namespace TakeoutPlatform.Api.Features.Order;
 
 [ApiController]
 [Route("api/orders")]
+[Authorize(Roles = nameof(AccountRole.Customer))]
 public sealed class OrderController : ControllerBase
 {
     private readonly OrderService _orderService;
@@ -17,6 +20,7 @@ public sealed class OrderController : ControllerBase
         [FromBody] CreateOrderRequest request,
         CancellationToken cancellationToken)
     {
+        request.UserId = User.GetProfileId();
         var result = await _orderService.CreateAsync(request, cancellationToken);
 
         switch (result.Outcome)
@@ -44,6 +48,9 @@ public sealed class OrderController : ControllerBase
         int userId,
         CancellationToken cancellationToken)
     {
+        if (userId != User.GetProfileId())
+            return Forbid();
+
         var orders = await _orderService.ListByUserAsync(userId, cancellationToken);
         return Ok(ApiResult<IReadOnlyList<OrderResponse>>.Ok(orders));
     }
@@ -54,7 +61,7 @@ public sealed class OrderController : ControllerBase
         int orderId,
         CancellationToken cancellationToken)
     {
-        var result = await _orderService.CancelAsync(orderId, cancellationToken);
+        var result = await _orderService.CancelAsync(orderId, User.GetProfileId(), cancellationToken);
 
         return result.Outcome switch
         {

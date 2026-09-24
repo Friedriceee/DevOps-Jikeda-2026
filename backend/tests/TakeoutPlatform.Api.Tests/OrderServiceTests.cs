@@ -219,7 +219,7 @@ public class OrderServiceTests : ServiceTestBase
 
         await using var context = CreateContext();
         var cancelService = new OrderService(context);
-        var cancel = await cancelService.CancelAsync(orderId, CancellationToken.None);
+        var cancel = await cancelService.CancelAsync(orderId, SeededUserId, CancellationToken.None);
 
         Assert.That(cancel.Outcome, Is.EqualTo(CancelOrderOutcome.Success));
 
@@ -235,7 +235,7 @@ public class OrderServiceTests : ServiceTestBase
         await using var context = CreateContext();
         var service = new OrderService(context);
 
-        var cancel = await service.CancelAsync(999, CancellationToken.None);
+        var cancel = await service.CancelAsync(999, SeededUserId, CancellationToken.None);
 
         Assert.That(cancel.Outcome, Is.EqualTo(CancelOrderOutcome.NotFound));
     }
@@ -265,7 +265,7 @@ public class OrderServiceTests : ServiceTestBase
 
         await using var context = CreateContext();
         var cancelService = new OrderService(context);
-        var cancel = await cancelService.CancelAsync(orderId, CancellationToken.None);
+        var cancel = await cancelService.CancelAsync(orderId, SeededUserId, CancellationToken.None);
 
         Assert.That(cancel.Outcome, Is.EqualTo(CancelOrderOutcome.NotCancellable));
 

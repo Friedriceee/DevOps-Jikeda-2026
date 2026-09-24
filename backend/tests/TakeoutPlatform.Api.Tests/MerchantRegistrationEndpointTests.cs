@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using TakeoutPlatform.Api.Data;
+using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Merchant;
 
 namespace TakeoutPlatform.Api.Tests;
@@ -45,15 +46,18 @@ public class MerchantRegistrationEndpointTests
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var merchant = await db.Merchants.SingleAsync(m => m.Username == "newmerchant");
-        var hasher = new PasswordHasher<Merchant>();
+        var account = await db.Accounts.SingleAsync(a => a.NormalizedUsername == "NEWMERCHANT");
+        var merchant = await db.Merchants.SingleAsync(m => m.Id == account.ProfileId);
+        var hasher = new PasswordHasher<Account>();
+        var walletHasher = new PasswordHasher<Merchant>();
         Assert.That(merchant.Name, Is.EqualTo("New Merchant"));
         Assert.That(merchant.Address, Is.EqualTo("12 Main Street"));
         Assert.That(merchant.CouponType, Is.Zero);
         Assert.That(merchant.Wallet, Is.Zero);
-        Assert.That(hasher.VerifyHashedPassword(merchant, merchant.PasswordHash!, "StrongPassword123"),
+        Assert.That(account.Role, Is.EqualTo(AccountRole.Merchant));
+        Assert.That(hasher.VerifyHashedPassword(account, account.PasswordHash, "StrongPassword123"),
             Is.Not.EqualTo(PasswordVerificationResult.Failed));
-        Assert.That(hasher.VerifyHashedPassword(merchant, merchant.WalletPasswordHash!, "WalletSecret123"),
+        Assert.That(walletHasher.VerifyHashedPassword(merchant, merchant.WalletPasswordHash!, "WalletSecret123"),
             Is.Not.EqualTo(PasswordVerificationResult.Failed));
     }
 
@@ -68,7 +72,7 @@ public class MerchantRegistrationEndpointTests
         Assert.That(body?.Success, Is.False);
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        Assert.That(await db.Merchants.CountAsync(m => m.Username == "newmerchant"), Is.EqualTo(1));
+        Assert.That(await db.Accounts.CountAsync(a => a.NormalizedUsername == "NEWMERCHANT"), Is.EqualTo(1));
     }
 
     [TestCase("", "StrongPassword123")]

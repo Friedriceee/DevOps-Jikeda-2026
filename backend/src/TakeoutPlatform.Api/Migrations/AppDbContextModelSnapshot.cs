@@ -20,6 +20,24 @@ partial class AppDbContextModelSnapshot : ModelSnapshot
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+        modelBuilder.Entity("TakeoutPlatform.Api.Features.Auth.Account", b =>
+        {
+            b.Property<int>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("integer")
+                .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
+            b.Property<DateTime>("CreatedAtUtc").HasColumnType("timestamp with time zone");
+            b.Property<string>("NormalizedUsername").IsRequired().HasMaxLength(50).HasColumnType("character varying(50)");
+            b.Property<string>("PasswordHash").IsRequired().HasMaxLength(500).HasColumnType("character varying(500)");
+            b.Property<int>("ProfileId").HasColumnType("integer");
+            b.Property<string>("Role").IsRequired().HasMaxLength(20).HasColumnType("character varying(20)");
+            b.Property<string>("Username").IsRequired().HasMaxLength(50).HasColumnType("character varying(50)");
+            b.HasKey("Id");
+            b.HasIndex("NormalizedUsername").IsUnique();
+            b.HasIndex("Role", "ProfileId").IsUnique();
+            b.ToTable("Accounts");
+        });
+
         modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.Dish", b =>
         {
             b.Property<int>("Id")

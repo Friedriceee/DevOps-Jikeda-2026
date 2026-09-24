@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.User;
+using TakeoutPlatform.Api.Features.Auth;
 using Order = TakeoutPlatform.Api.Features.Order.Order;
 using OrderUser = TakeoutPlatform.Api.Features.Order.OrderUser;
 using OrderRider = TakeoutPlatform.Api.Features.Order.OrderRider;
@@ -14,6 +15,7 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<Merchant> Merchants => Set<Merchant>();
+    public DbSet<Account> Accounts => Set<Account>();
     public DbSet<Dish> Dishes => Set<Dish>();
     public DbSet<SpecialOffer> SpecialOffers => Set<SpecialOffer>();
     public DbSet<User> Users => Set<User>();
@@ -48,6 +50,16 @@ public class AppDbContext : DbContext
                 Id = 1,
                 Name = "Demo Merchant",
             });
+        });
+
+        modelBuilder.Entity<Account>(entity =>
+        {
+            entity.Property(account => account.Username).HasMaxLength(50).IsRequired();
+            entity.Property(account => account.NormalizedUsername).HasMaxLength(50).IsRequired();
+            entity.Property(account => account.PasswordHash).HasMaxLength(500).IsRequired();
+            entity.Property(account => account.Role).HasConversion<string>().HasMaxLength(20);
+            entity.HasIndex(account => account.NormalizedUsername).IsUnique();
+            entity.HasIndex(account => new { account.Role, account.ProfileId }).IsUnique();
         });
 
         modelBuilder.Entity<Dish>(entity =>

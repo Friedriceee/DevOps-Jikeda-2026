@@ -4,8 +4,7 @@ namespace TakeoutPlatform.Api.Features.Merchant;
 
 public sealed class CreateSpecialOfferRequest : IValidatableObject
 {
-    [Required(ErrorMessage = "merchantId 不能为空")]
-    [Range(1, int.MaxValue, ErrorMessage = "merchantId 必须大于 0")]
+    // 兼容旧客户端字段；Controller 始终以 JWT profile_id 覆盖它。
     public int MerchantId { get; set; }
 
     public decimal MinPrice { get; set; }

@@ -1,4 +1,7 @@
 {
+  "Jwt": {
+    "Key": "set-a-local-secret-of-at-least-32-bytes"
+  },
   "ConnectionStrings": {
     "Default": "Host=localhost;Port=5432;Database=takeout;Username=takeout;Password=takeout"
   },

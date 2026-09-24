@@ -195,12 +195,18 @@ public sealed class OrderService
     /// </summary>
     public async Task<CancelOrderResult> CancelAsync(
         int orderId,
+        int userId,
         CancellationToken cancellationToken)
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
         try
         {
-            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+            var ownsOrder = await _db.OrderUsers.AnyAsync(
+                orderUser => orderUser.OrderId == orderId && orderUser.UserId == userId,
+                cancellationToken);
+            var order = ownsOrder
+                ? await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken)
+                : null;
             if (order is null)
             {
                 return new CancelOrderResult(CancelOrderOutcome.NotFound, "订单不存在");
