@@ -43,6 +43,8 @@ async function submit() {
       ? route.query.redirect
       : '/customer/merchants'
     await router.replace(redirect)
+  } catch (error) {
+    if (!error?.userNotified) ElMessage.error('登录失败，请稍后重试')
   } finally {
     loading.value = false
   }

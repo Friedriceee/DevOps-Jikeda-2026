@@ -10,6 +10,7 @@ const selectedMerchant = ref(null)
 const merchantsLoading = ref(false)
 const menuLoading = ref(false)
 const loadError = ref('')
+const menuError = ref('')
 
 const visibleDishes = computed(() => dishes.value.filter((dish) => dish.isActive !== false))
 
@@ -33,9 +34,12 @@ async function loadMerchants() {
 async function selectMerchant(merchant) {
   selectedMerchant.value = merchant
   menuLoading.value = true
+  menuError.value = ''
   dishes.value = []
   try {
     dishes.value = await listMerchantMenu(merchant.id)
+  } catch {
+    menuError.value = '菜单加载失败，请稍后重试'
   } finally {
     menuLoading.value = false
   }
@@ -98,6 +102,7 @@ onMounted(loadMerchants)
           </template>
 
           <el-skeleton v-if="menuLoading" :rows="6" animated />
+          <el-alert v-else-if="menuError" :title="menuError" type="error" show-icon />
           <el-empty v-else-if="!selectedMerchant" description="请选择商家" />
           <el-empty v-else-if="visibleDishes.length === 0" description="该商家暂无可售菜品" />
           <div v-else class="dish-grid">
