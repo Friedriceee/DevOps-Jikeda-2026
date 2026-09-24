@@ -11,6 +11,12 @@ const routes = [
     name: 'merchant-dishes',
     component: () => import('@/views/merchant/MerchantDishView.vue'),
   },
+  {
+    path: '/customer/merchants',
+    name: 'customer-merchants',
+    component: () => import('@/views/customer/MerchantBrowseView.vue'),
+    meta: { requiresAuth: false },
+  },
 ]
 
 const router = createRouter({
