@@ -38,7 +38,13 @@ describe('MerchantBrowseView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     listMerchants.mockResolvedValue([
-      { id: 1, name: 'Demo Merchant', address: 'Central', openingHours: '10:00-22:00' },
+      {
+        id: 1,
+        name: 'Demo Merchant',
+        address: 'Central',
+        openingHours: '10:00-22:00',
+        promotionInfo: 'Spend $20, save $3',
+      },
     ])
     listMerchantMenu.mockResolvedValue([
       { id: 11, name: 'Available Noodles', price: 12, inventory: 4, isActive: true },
@@ -56,6 +62,7 @@ describe('MerchantBrowseView', () => {
     expect(wrapper.text()).toContain('Available Noodles')
     expect(wrapper.text()).toContain('Sold Out Rice')
     expect(wrapper.text()).not.toContain('Inactive Soup')
+    expect(wrapper.text()).toContain('Spend $20, save $3')
   })
 
   it('disables sold-out dishes and only handles add-to-cart for available dishes', async () => {
@@ -87,5 +94,25 @@ describe('MerchantBrowseView', () => {
 
     expect(wrapper.text()).toContain('暂无商家')
     expect(listMerchantMenu).not.toHaveBeenCalled()
+  })
+
+  it('loads the selected merchant menu when the customer switches merchants', async () => {
+    listMerchants.mockResolvedValueOnce([
+      { id: 1, name: 'First Merchant' },
+      { id: 2, name: 'Second Merchant' },
+    ])
+    listMerchantMenu
+      .mockResolvedValueOnce([{ id: 21, name: 'First Dish', price: 8, inventory: 2 }])
+      .mockResolvedValueOnce([{ id: 22, name: 'Second Dish', price: 9, inventory: 3 }])
+
+    const wrapper = shallowMount(MerchantBrowseView, { global: { stubs } })
+    await flushPromises()
+    const secondMerchant = wrapper.findAll('button').find((button) => button.text().includes('Second Merchant'))
+    await secondMerchant.trigger('click')
+    await flushPromises()
+
+    expect(listMerchantMenu).toHaveBeenNthCalledWith(2, 2)
+    expect(wrapper.text()).toContain('Second Dish')
+    expect(wrapper.text()).not.toContain('First Dish')
   })
 })

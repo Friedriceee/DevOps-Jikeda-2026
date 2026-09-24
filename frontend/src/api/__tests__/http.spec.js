@@ -33,6 +33,9 @@ import {
   unwrapApiResponse,
 } from '@/api/http'
 
+const requestInterceptor = mocks.http.interceptors.request.use.mock.calls[0][0]
+const responseInterceptors = mocks.http.interceptors.response.use.mock.calls[0]
+
 describe('HTTP authentication and response handling', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,9 +51,21 @@ describe('HTTP authentication and response handling', () => {
     expect(addBearerToken(anonymousConfig, null)).toEqual({ headers: {} })
   })
 
+  it('wires the auth store token into the actual Axios request interceptor', () => {
+    mocks.authStore.token = 'interceptor-token'
+    const config = requestInterceptor({ headers: {} })
+
+    expect(config.headers.Authorization).toBe('Bearer interceptor-token')
+  })
+
   it('unwraps successful API envelopes and passes through raw responses', () => {
     expect(unwrapApiResponse({ data: { success: true, data: [{ id: 1 }] } })).toEqual([{ id: 1 }])
     expect(unwrapApiResponse({ data: [{ id: 2 }] })).toEqual([{ id: 2 }])
+  })
+
+  it('wires successful responses through the actual Axios response interceptor', () => {
+    const [onSuccess] = responseInterceptors
+    expect(onSuccess({ data: { success: true, data: { id: 9 } } })).toEqual({ id: 9 })
   })
 
   it('rejects failed API envelopes and displays their message', () => {
