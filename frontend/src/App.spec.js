@@ -43,7 +43,7 @@ describe('App authentication controls', () => {
     const wrapper = mount(App, { global: { stubs } })
     await wrapper.find('button').trigger('click')
 
-    expect(wrapper.text()).toContain('登录')
+    expect(wrapper.text()).toContain('Log in')
     expect(mocks.push).toHaveBeenCalledWith({ name: 'login' })
   })
 
@@ -52,12 +52,12 @@ describe('App authentication controls', () => {
     const wrapper = mount(App, { global: { stubs } })
     const buttons = wrapper.findAll('button')
     expect(wrapper.text()).toContain('Alice')
-    expect(buttons.map((button) => button.text())).toContain('退出登录')
+    expect(buttons.map((button) => button.text())).toContain('Log out')
 
     await buttons[0].trigger('click')
 
     expect(useAuthStore().isAuthenticated).toBe(false)
     expect(mocks.push).toHaveBeenCalledWith({ name: 'home' })
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('已退出登录')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('Logged out successfully')
   })
 })

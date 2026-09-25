@@ -89,7 +89,7 @@ describe('HTTP authentication and response handling', () => {
       name: 'login',
       query: { redirect: '/customer/cart' },
     })
-    expect(mocks.notifyError).toHaveBeenCalledWith('登录已失效，请重新登录')
+    expect(mocks.notifyError).toHaveBeenCalledWith('Your session has expired. Please log in again.')
   })
 
   it('shows other server errors without clearing the session', async () => {

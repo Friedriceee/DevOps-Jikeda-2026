@@ -20,11 +20,11 @@ public sealed class AuthController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Username) ||
             string.IsNullOrWhiteSpace(request.DisplayName))
-            return BadRequest(ApiResult<CustomerRegistrationResponse>.Fail("必填字段不能为空"));
+            return BadRequest(ApiResult<CustomerRegistrationResponse>.Fail("Required fields cannot be empty."));
 
         var result = await _authService.RegisterCustomerAsync(request, cancellationToken);
         return result.Conflict
-            ? Conflict(ApiResult<CustomerRegistrationResponse>.Fail("用户名已存在"))
+            ? Conflict(ApiResult<CustomerRegistrationResponse>.Fail("Username already exists."))
             : StatusCode(StatusCodes.Status201Created,
                 ApiResult<CustomerRegistrationResponse>.Ok(result.Customer!));
     }
@@ -37,7 +37,7 @@ public sealed class AuthController : ControllerBase
     {
         var login = await _authService.LoginAsync(request, cancellationToken);
         return login is null
-            ? Unauthorized(ApiResult<LoginResponse>.Fail("用户名或密码错误"))
+            ? Unauthorized(ApiResult<LoginResponse>.Fail("Invalid username or password."))
             : Ok(ApiResult<LoginResponse>.Ok(login));
     }
 }
