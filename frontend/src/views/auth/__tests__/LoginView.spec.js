@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 const mocks = vi.hoisted(() => ({
   login: vi.fn(),
   replace: vi.fn(),
+  push: vi.fn(),
   messageSuccess: vi.fn(),
   messageWarning: vi.fn(),
   messageError: vi.fn(),
@@ -16,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/api/auth', () => ({ login: mocks.login }))
 vi.mock('vue-router', () => ({
   useRoute: () => mocks.route,
-  useRouter: () => ({ replace: mocks.replace }),
+  useRouter: () => ({ replace: mocks.replace, push: mocks.push }),
 }))
 vi.mock('element-plus', () => ({
   ElMessage: {
@@ -75,6 +76,15 @@ describe('LoginView', () => {
 
     expect(mocks.login).not.toHaveBeenCalled()
     expect(mocks.messageWarning).toHaveBeenCalledWith('请输入用户名')
+  })
+
+  it('links visitors to customer registration', async () => {
+    const wrapper = mount(LoginView, { global: { stubs } })
+    const registerButton = wrapper.findAll('button').find((button) => button.text() === '立即注册')
+
+    await registerButton.trigger('click')
+
+    expect(mocks.push).toHaveBeenCalledWith({ name: 'register' })
   })
 
   it('logs in, saves the session, and returns to the requested page', async () => {

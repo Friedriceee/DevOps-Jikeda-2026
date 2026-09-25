@@ -11,7 +11,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const form = reactive({
-  username: '',
+  username: typeof route.query.username === 'string' ? route.query.username : '',
   password: '',
 })
 const loading = ref(false)
@@ -73,6 +73,10 @@ async function submit() {
         <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">
           登录
         </el-button>
+        <div class="register-link">
+          还没有账号？
+          <el-button link type="primary" @click="router.push({ name: 'register' })">立即注册</el-button>
+        </div>
       </el-form>
     </el-card>
   </section>
@@ -82,4 +86,5 @@ async function submit() {
 .login-page { max-width: 460px; margin: 64px auto; }
 .login-title { font-size: 20px; font-weight: 600; }
 .submit-button { width: 100%; }
+.register-link { margin-top: 18px; text-align: center; color: #6b7280; }
 </style>
