@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 const mocks = vi.hoisted(() => ({
   login: vi.fn(),
   replace: vi.fn(),
+  push: vi.fn(),
   messageSuccess: vi.fn(),
   messageWarning: vi.fn(),
   messageError: vi.fn(),
@@ -16,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/api/auth', () => ({ login: mocks.login }))
 vi.mock('vue-router', () => ({
   useRoute: () => mocks.route,
-  useRouter: () => ({ replace: mocks.replace }),
+  useRouter: () => ({ replace: mocks.replace, push: mocks.push }),
 }))
 vi.mock('element-plus', () => ({
   ElMessage: {
@@ -74,7 +75,16 @@ describe('LoginView', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(mocks.login).not.toHaveBeenCalled()
-    expect(mocks.messageWarning).toHaveBeenCalledWith('Enter your username.')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('Enter your username')
+  })
+
+  it('links visitors to customer registration', async () => {
+    const wrapper = mount(LoginView, { global: { stubs } })
+    const registerButton = wrapper.findAll('button').find((button) => button.text() === 'Register now')
+
+    await registerButton.trigger('click')
+
+    expect(mocks.push).toHaveBeenCalledWith({ name: 'register' })
   })
 
   it('logs in, saves the session, and returns to the requested page', async () => {
@@ -95,7 +105,7 @@ describe('LoginView', () => {
     expect(mocks.login).toHaveBeenCalledWith({ username: 'alice', password: 'secret' })
     expect(useAuthStore().token).toBe('jwt-token')
     expect(mocks.replace).toHaveBeenCalledWith('/customer/cart')
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('Welcome back!')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('Login successful')
   })
 
   it('uses the merchant browsing page as the default destination', async () => {
@@ -133,7 +143,7 @@ describe('LoginView', () => {
 
     expect(useAuthStore().isAuthenticated).toBe(false)
     expect(mocks.replace).not.toHaveBeenCalled()
-    expect(mocks.messageError).toHaveBeenCalledWith('Sign-in failed. Please try again.')
+    expect(mocks.messageError).toHaveBeenCalledWith('Login failed. Please try again later.')
     expect(wrapper.find('button').attributes('disabled')).toBeUndefined()
   })
 })
