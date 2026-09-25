@@ -30,6 +30,7 @@ vi.mock('@/stores/auth', () => ({ useAuthStore: mocks.useAuthStore }))
 import {
   addBearerToken,
   handleApiError,
+  isAnonymousAuthRequest,
   unwrapApiResponse,
 } from '@/api/http'
 
@@ -51,11 +52,20 @@ describe('HTTP authentication and response handling', () => {
     expect(addBearerToken(anonymousConfig, null)).toEqual({ headers: {} })
   })
 
+  it('does not attach an old token to login or registration requests', () => {
+    expect(isAnonymousAuthRequest('/auth/login')).toBe(true)
+    expect(isAnonymousAuthRequest('/auth/customer/register')).toBe(true)
+    expect(isAnonymousAuthRequest('/cart')).toBe(false)
+  })
+
   it('wires the auth store token into the actual Axios request interceptor', () => {
     mocks.authStore.token = 'interceptor-token'
     const config = requestInterceptor({ headers: {} })
 
     expect(config.headers.Authorization).toBe('Bearer interceptor-token')
+
+    const anonymousConfig = requestInterceptor({ url: '/auth/customer/register', headers: {} })
+    expect(anonymousConfig.headers.Authorization).toBeUndefined()
   })
 
   it('unwraps successful API envelopes and passes through raw responses', () => {
@@ -89,7 +99,7 @@ describe('HTTP authentication and response handling', () => {
       name: 'login',
       query: { redirect: '/customer/cart' },
     })
-    expect(mocks.notifyError).toHaveBeenCalledWith('登录已失效，请重新登录')
+    expect(mocks.notifyError).toHaveBeenCalledWith('Your session has expired. Please sign in again.')
   })
 
   it('shows other server errors without clearing the session', async () => {

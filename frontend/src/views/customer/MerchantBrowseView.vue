@@ -30,7 +30,7 @@ async function loadMerchants() {
     merchants.value = await listMerchants()
     if (merchants.value.length > 0) await selectMerchant(merchants.value[0])
   } catch {
-    loadError.value = '商家信息加载失败，请稍后重试'
+    loadError.value = 'Could not load restaurants. Please try again.'
   } finally {
     merchantsLoading.value = false
   }
@@ -44,7 +44,7 @@ async function selectMerchant(merchant) {
   try {
     dishes.value = await listMerchantMenu(merchant.id)
   } catch {
-    menuError.value = '菜单加载失败，请稍后重试'
+    menuError.value = 'Could not load this menu. Please try again.'
   } finally {
     menuLoading.value = false
   }
@@ -59,7 +59,7 @@ async function handleAddToCart(dish) {
   addingDishId.value = dish.id
   try {
     await cart.addItem(dish)
-    ElMessage.success('已加入购物车')
+    ElMessage.success('Added to your cart.')
   } finally {
     addingDishId.value = null
   }
@@ -73,11 +73,11 @@ onMounted(loadMerchants)
     <div class="page-heading">
       <div>
         <h1>Browse Merchants and Menu</h1>
-        <p>查看商家和可售菜品</p>
+        <p>Choose a restaurant and add available dishes to your cart.</p>
       </div>
       <div class="heading-actions">
         <el-button @click="router.push({ name: 'customer-cart' })">
-          购物车{{ cart.totalCount ? ` (${cart.totalCount})` : '' }}
+          Cart{{ cart.totalCount ? ` (${cart.totalCount})` : '' }}
         </el-button>
         <el-button :loading="merchantsLoading" @click="loadMerchants">Refresh</el-button>
       </div>
@@ -90,7 +90,7 @@ onMounted(loadMerchants)
         <el-card shadow="never">
           <template #header>Merchants</template>
           <el-skeleton v-if="merchantsLoading" :rows="5" animated />
-          <el-empty v-else-if="merchants.length === 0" description="暂无商家" />
+          <el-empty v-else-if="merchants.length === 0" description="No restaurants are available yet." />
           <div v-else class="merchant-list">
             <button
               v-for="merchant in merchants"
@@ -101,8 +101,8 @@ onMounted(loadMerchants)
               @click="selectMerchant(merchant)"
             >
               <strong>{{ merchant.name }}</strong>
-              <span>{{ merchant.address || '地址暂未提供' }}</span>
-              <small>{{ merchant.openingHours || '营业时间暂未提供' }}</small>
+              <span>{{ merchant.address || 'Address unavailable' }}</span>
+              <small>{{ merchant.openingHours || 'Hours unavailable' }}</small>
             </button>
           </div>
         </el-card>
@@ -119,17 +119,17 @@ onMounted(loadMerchants)
 
           <el-skeleton v-if="menuLoading" :rows="6" animated />
           <el-alert v-else-if="menuError" :title="menuError" type="error" show-icon />
-          <el-empty v-else-if="!selectedMerchant" description="请选择商家" />
-          <el-empty v-else-if="visibleDishes.length === 0" description="该商家暂无可售菜品" />
+          <el-empty v-else-if="!selectedMerchant" description="Select a restaurant to view its menu." />
+          <el-empty v-else-if="visibleDishes.length === 0" description="No dishes are currently available." />
           <div v-else class="dish-grid">
             <el-card v-for="dish in visibleDishes" :key="dish.id" class="dish-card" shadow="hover">
               <img v-if="dish.imageUrl" :src="dish.imageUrl" :alt="dish.name" class="dish-image">
               <div class="dish-content">
                 <div class="dish-title">
                   <strong>{{ dish.name }}</strong>
-                  <el-tag v-if="isSoldOut(dish)" type="info" size="small">售罄</el-tag>
+                  <el-tag v-if="isSoldOut(dish)" type="info" size="small">Sold out</el-tag>
                 </div>
-                <span class="dish-category">{{ dish.category || '未分类' }}</span>
+                <span class="dish-category">{{ dish.category || 'Uncategorised' }}</span>
                 <div class="dish-footer">
                   <strong class="dish-price">{{ formatYuan(dish.price) }}</strong>
                   <el-button
@@ -139,7 +139,7 @@ onMounted(loadMerchants)
                     :loading="addingDishId === dish.id"
                     @click="handleAddToCart(dish)"
                   >
-                    加入购物车
+                    Add to cart
                   </el-button>
                 </div>
               </div>
@@ -149,7 +149,7 @@ onMounted(loadMerchants)
           <el-alert
             v-if="selectedMerchant && showPromotion(selectedMerchant)"
             class="promotion-note"
-            :title="`优惠信息：${showPromotion(selectedMerchant)}`"
+            :title="`Special offer: ${showPromotion(selectedMerchant)}`"
             type="info"
             :closable="false"
           />

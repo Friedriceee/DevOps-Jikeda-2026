@@ -13,7 +13,7 @@ async function loadCart() {
   try {
     await cart.load()
   } catch {
-    ElMessage.error('购物车加载失败，请稍后重试')
+    ElMessage.error('Could not load your cart. Please try again.')
   }
 }
 
@@ -29,12 +29,12 @@ async function updateQuantity(item, dishNum) {
 
 async function removeItem(item) {
   try {
-    await ElMessageBox.confirm(`确定移除“${item.dishName}”吗？`, '移除商品', {
-      type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消',
+    await ElMessageBox.confirm(`Remove “${item.dishName}” from your cart?`, 'Remove item', {
+      type: 'warning', confirmButtonText: 'Remove', cancelButtonText: 'Keep item',
     })
     updatingItemId.value = item.id
     await cart.removeItem(item.id)
-    ElMessage.success('商品已移除')
+    ElMessage.success('Item removed.')
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') throw error
   } finally {
@@ -44,11 +44,11 @@ async function removeItem(item) {
 
 async function clearMerchant(group) {
   try {
-    await ElMessageBox.confirm(`确定清空“${group.merchantName}”的商品吗？`, '清空商家购物车', {
-      type: 'warning', confirmButtonText: '清空', cancelButtonText: '取消',
+    await ElMessageBox.confirm(`Remove all items from ${group.merchantName}?`, 'Clear restaurant cart', {
+      type: 'warning', confirmButtonText: 'Clear cart', cancelButtonText: 'Keep items',
     })
     await cart.clearMerchant(group.merchantId)
-    ElMessage.success('该商家购物车已清空')
+    ElMessage.success('Restaurant cart cleared.')
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') throw error
   }
@@ -61,34 +61,34 @@ onMounted(loadCart)
   <section class="cart-page">
     <div class="page-heading">
       <div>
-        <h1>我的购物车</h1>
-        <p>金额与满减优惠由服务器按当前菜品价格计算。</p>
+        <h1>Your cart</h1>
+        <p>Prices and eligible special offers are calculated by the server using the current menu.</p>
       </div>
       <div class="heading-actions">
-        <el-button :loading="cart.loading" @click="loadCart">刷新</el-button>
+        <el-button :loading="cart.loading" @click="loadCart">Refresh</el-button>
         <el-button type="primary" :disabled="cart.items.length === 0" @click="router.push({ name: 'user-orders' })">
-          去结算
+          Checkout
         </el-button>
       </div>
     </div>
 
-    <el-empty v-if="!cart.loading && cart.groups.length === 0" description="购物车为空">
-      <el-button type="primary" @click="router.push({ name: 'customer-merchants' })">去选购</el-button>
+    <el-empty v-if="!cart.loading && cart.groups.length === 0" description="Your cart is empty.">
+      <el-button type="primary" @click="router.push({ name: 'customer-merchants' })">Browse restaurants</el-button>
     </el-empty>
 
     <el-card v-for="group in cart.groups" :key="group.merchantId" class="merchant-card" shadow="never">
       <template #header>
         <div class="merchant-heading">
           <strong>{{ group.merchantName }}</strong>
-          <el-button link type="danger" @click="clearMerchant(group)">清空该商家</el-button>
+          <el-button link type="danger" @click="clearMerchant(group)">Clear restaurant</el-button>
         </div>
       </template>
       <el-table :data="group.items" stripe>
-        <el-table-column prop="dishName" label="菜品" min-width="180" />
-        <el-table-column label="单价" width="130">
+        <el-table-column prop="dishName" label="Dish" min-width="180" />
+        <el-table-column label="Unit price" width="130">
           <template #default="scope">{{ formatYuan(scope.row.unitPrice) }}</template>
         </el-table-column>
-        <el-table-column label="数量" width="180">
+        <el-table-column label="Quantity" width="180">
           <template #default="scope">
             <el-input-number
               :model-value="scope.row.dishNum"
@@ -100,29 +100,29 @@ onMounted(loadCart)
             />
           </template>
         </el-table-column>
-        <el-table-column label="小计" width="130">
+        <el-table-column label="Item total" width="130">
           <template #default="scope">{{ formatYuan(scope.row.lineTotal) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="Actions" width="100" fixed="right">
           <template #default="scope">
             <el-button link type="danger" :loading="updatingItemId === scope.row.id" @click="removeItem(scope.row)">
-              移除
+              Remove
             </el-button>
           </template>
         </el-table-column>
       </el-table>
       <div class="merchant-summary">
-        <span>小计：{{ formatYuan(group.subtotal) }}</span>
-        <span>满减：-{{ formatYuan(group.discount) }}</span>
-        <strong>商家合计：{{ formatYuan(group.total) }}</strong>
+        <span>Subtotal: {{ formatYuan(group.subtotal) }}</span>
+        <span>Discount: -{{ formatYuan(group.discount) }}</span>
+        <strong>Restaurant total: {{ formatYuan(group.total) }}</strong>
       </div>
     </el-card>
 
     <el-card v-if="cart.groups.length > 0" class="cart-summary" shadow="never">
-      <span>共 {{ cart.totalCount }} 件商品</span>
-      <span>商品小计：{{ formatYuan(cart.subtotal) }}</span>
-      <span>优惠：-{{ formatYuan(cart.discount) }}</span>
-      <strong>应付：{{ formatYuan(cart.total) }}</strong>
+      <span>{{ cart.totalCount }} item{{ cart.totalCount === 1 ? '' : 's' }}</span>
+      <span>Food subtotal: {{ formatYuan(cart.subtotal) }}</span>
+      <span>Discount: -{{ formatYuan(cart.discount) }}</span>
+      <strong>Total: {{ formatYuan(cart.total) }}</strong>
     </el-card>
   </section>
 </template>

@@ -74,7 +74,7 @@ describe('LoginView', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(mocks.login).not.toHaveBeenCalled()
-    expect(mocks.messageWarning).toHaveBeenCalledWith('请输入用户名')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('Enter your username.')
   })
 
   it('logs in, saves the session, and returns to the requested page', async () => {
@@ -95,7 +95,7 @@ describe('LoginView', () => {
     expect(mocks.login).toHaveBeenCalledWith({ username: 'alice', password: 'secret' })
     expect(useAuthStore().token).toBe('jwt-token')
     expect(mocks.replace).toHaveBeenCalledWith('/customer/cart')
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('登录成功')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('Welcome back!')
   })
 
   it('uses the merchant browsing page as the default destination', async () => {
@@ -133,7 +133,7 @@ describe('LoginView', () => {
 
     expect(useAuthStore().isAuthenticated).toBe(false)
     expect(mocks.replace).not.toHaveBeenCalled()
-    expect(mocks.messageError).toHaveBeenCalledWith('登录失败，请稍后重试')
+    expect(mocks.messageError).toHaveBeenCalledWith('Sign-in failed. Please try again.')
     expect(wrapper.find('button').attributes('disabled')).toBeUndefined()
   })
 })

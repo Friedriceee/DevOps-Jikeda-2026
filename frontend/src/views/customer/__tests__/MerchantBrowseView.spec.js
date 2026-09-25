@@ -77,7 +77,7 @@ describe('MerchantBrowseView', () => {
     const wrapper = shallowMount(MerchantBrowseView, { global: { stubs } })
     await flushPromises()
 
-    const addButtons = wrapper.findAll('button').filter((button) => button.text().includes('加入购物车'))
+    const addButtons = wrapper.findAll('button').filter((button) => button.text().includes('Add to cart'))
     expect(addButtons).toHaveLength(2)
     expect(addButtons[0].attributes('disabled')).toBeUndefined()
     expect(addButtons[1].attributes('disabled')).toBeDefined()
@@ -86,7 +86,7 @@ describe('MerchantBrowseView', () => {
     await flushPromises()
     await addButtons[1].trigger('click')
     expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ id: 11, name: 'Available Noodles' }))
-    expect(messageSuccess).toHaveBeenCalledWith('已加入购物车')
+    expect(messageSuccess).toHaveBeenCalledWith('Added to your cart.')
   })
 
   it('shows a useful message when the menu request fails', async () => {
@@ -94,7 +94,7 @@ describe('MerchantBrowseView', () => {
     const wrapper = shallowMount(MerchantBrowseView, { global: { stubs } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('菜单加载失败，请稍后重试')
+    expect(wrapper.text()).toContain('Could not load this menu. Please try again.')
   })
 
   it('shows an empty state when there are no merchants', async () => {
@@ -102,7 +102,7 @@ describe('MerchantBrowseView', () => {
     const wrapper = shallowMount(MerchantBrowseView, { global: { stubs } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('暂无商家')
+    expect(wrapper.text()).toContain('No restaurants are available yet.')
     expect(listMerchantMenu).not.toHaveBeenCalled()
   })
 

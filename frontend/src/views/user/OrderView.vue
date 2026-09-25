@@ -2,19 +2,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCartStore } from '@/stores/cart'
+import { useAuthStore } from '@/stores/auth'
 import { cancelOrder, createOrder, listAddresses, listOrders } from '@/api/order'
-import {
-  buildOrderPayload,
-  canPlaceOrder,
-  isPending,
-  orderStatusText,
-  orderTotalPrice,
-} from '@/utils/order'
+import { buildOrderPayload, canPlaceOrder, isPending, orderStatusText } from '@/utils/order'
 import { formatYuan } from '@/utils/money'
 
-// 第一周先手填一个 userId 方便联调，后续接入登录态。
-const userId = ref(1)
 const cart = useCartStore()
+const authStore = useAuthStore()
 
 const addresses = ref([])
 const selectedAddressId = ref(null)
@@ -23,11 +17,13 @@ const riderPrice = ref(3)
 const loading = ref(false)
 const submitting = ref(false)
 
-const totalPrice = computed(() => orderTotalPrice(cart.items, riderPrice.value))
+const userId = computed(() => authStore.user?.profileId ?? null)
+const totalPrice = computed(() => Math.round((Number(cart.total) + Number(riderPrice.value || 0)) * 100) / 100)
 const canSubmit = computed(() =>
   canPlaceOrder({ addressId: selectedAddressId.value, cart: cart.items }))
 
 async function loadAddresses() {
+  if (!userId.value) return
   addresses.value = await listAddresses(userId.value)
   if (addresses.value.length > 0 && !selectedAddressId.value) {
     selectedAddressId.value = addresses.value[0].id
@@ -37,6 +33,7 @@ async function loadAddresses() {
 async function loadOrders() {
   loading.value = true
   try {
+    if (!userId.value) return
     orders.value = await listOrders(userId.value)
   } finally {
     loading.value = false
@@ -45,7 +42,7 @@ async function loadOrders() {
 
 async function placeOrder() {
   if (!canSubmit.value) {
-    ElMessage.warning('请先选择收货地址并添加菜品')
+    ElMessage.warning('Choose a delivery address and add items before placing an order.')
     return
   }
   submitting.value = true
@@ -55,9 +52,10 @@ async function placeOrder() {
       addressId: selectedAddressId.value,
       cart: cart.items,
       riderPrice: riderPrice.value,
+      price: totalPrice.value,
     })
     await createOrder(payload)
-    ElMessage.success('下单成功')
+    ElMessage.success('Order placed successfully.')
     await cart.clear()
     await loadOrders()
   } finally {
@@ -67,13 +65,13 @@ async function placeOrder() {
 
 async function removeOrder(order) {
   try {
-    await ElMessageBox.confirm('确定要取消这笔待支付订单吗？', '确认取消订单', {
+    await ElMessageBox.confirm('Cancel this pending order?', 'Cancel order', {
       type: 'warning',
-      confirmButtonText: '确认',
-      cancelButtonText: '再想想',
+      confirmButtonText: 'Cancel order',
+      cancelButtonText: 'Keep order',
     })
     await cancelOrder(order.id)
-    ElMessage.success('订单已取消')
+    ElMessage.success('Order cancelled.')
     await loadOrders()
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') throw error
@@ -91,17 +89,17 @@ onMounted(async () => {
   <section class="order-page">
     <div class="page-heading">
       <div>
-        <h1>我的订单</h1>
-        <p>用户 ID：{{ userId }}</p>
+        <h1>Your orders</h1>
+        <p>Review your cart and delivery details before placing an order.</p>
       </div>
-      <el-button :loading="loading" @click="loadOrders">刷新</el-button>
+      <el-button :loading="loading" @click="loadOrders">Refresh</el-button>
     </div>
 
     <el-card class="form-card" shadow="never">
-      <template #header>下单</template>
+      <template #header>Checkout</template>
       <el-form label-position="top">
-        <el-form-item label="收货地址">
-          <el-select v-model="selectedAddressId" placeholder="选择收货地址" style="width: 100%">
+        <el-form-item label="Delivery address">
+          <el-select v-model="selectedAddressId" placeholder="Select a delivery address" style="width: 100%">
             <el-option
               v-for="addr in addresses"
               :key="addr.id"
@@ -110,39 +108,39 @@ onMounted(async () => {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="配送费">
+        <el-form-item label="Delivery fee">
           <el-input-number v-model="riderPrice" :min="0" :step="1" controls-position="right" />
         </el-form-item>
       </el-form>
 
       <el-table :data="cart.items" stripe>
-        <el-table-column prop="name" label="菜品" min-width="160" />
-        <el-table-column label="单价" width="120">
+        <el-table-column prop="name" label="Dish" min-width="160" />
+        <el-table-column label="Unit price" width="120">
           <template #default="scope">{{ formatYuan(scope.row.price) }}</template>
         </el-table-column>
-        <el-table-column prop="dishNum" label="数量" width="100" />
+        <el-table-column prop="dishNum" label="Quantity" width="100" />
       </el-table>
-      <el-empty v-if="cart.items.length === 0" description="购物车为空" />
+      <el-empty v-if="cart.items.length === 0" description="Your cart is empty." />
 
       <div class="summary">
-        <span>合计（含配送费）：<strong>{{ formatYuan(totalPrice) }}</strong></span>
+        <span>Total including delivery: <strong>{{ formatYuan(totalPrice) }}</strong></span>
         <el-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="placeOrder">
-          提交订单
+          Place order
         </el-button>
       </div>
     </el-card>
 
     <el-card shadow="never">
-      <template #header>订单列表</template>
+      <template #header>Order history</template>
       <el-table v-loading="loading" :data="orders" stripe>
-        <el-table-column prop="id" label="订单号" width="100" />
-        <el-table-column label="金额" width="130">
+        <el-table-column prop="id" label="Order ID" width="100" />
+        <el-table-column label="Amount" width="130">
           <template #default="scope">{{ formatYuan(scope.row.price) }}</template>
         </el-table-column>
-        <el-table-column label="状态" width="120">
+        <el-table-column label="Status" width="140">
           <template #default="scope">{{ orderStatusText(scope.row.status) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="Actions" width="140" fixed="right">
           <template #default="scope">
             <el-button
               v-if="isPending(scope.row.status)"
@@ -150,13 +148,13 @@ onMounted(async () => {
               type="danger"
               @click="removeOrder(scope.row)"
             >
-              取消订单
+              Cancel order
             </el-button>
             <span v-else>—</span>
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!loading && orders.length === 0" description="暂无订单" />
+      <el-empty v-if="!loading && orders.length === 0" description="No orders yet." />
     </el-card>
   </section>
 </template>
