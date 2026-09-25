@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { routes } from '@/router/routes'
 
 describe('application route access rules', () => {
+  it('exposes public login and customer registration routes', () => {
+    expect(routes.find((route) => route.name === 'login').path).toBe('/login')
+    expect(routes.find((route) => route.name === 'register').path).toBe('/register')
+  })
+
   it('protects merchant dish management with the Merchant role', () => {
     const merchantRoute = routes.find((route) => route.name === 'merchant-dishes')
     expect(merchantRoute.meta).toEqual({ requiresAuth: true, role: 'Merchant' })

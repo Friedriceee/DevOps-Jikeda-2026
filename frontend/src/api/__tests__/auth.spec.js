@@ -4,7 +4,7 @@ const http = vi.hoisted(() => ({ post: vi.fn() }))
 
 vi.mock('@/api/http', () => ({ default: http }))
 
-import { login } from '@/api/auth'
+import { login, registerCustomer } from '@/api/auth'
 
 describe('authentication API', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -15,5 +15,18 @@ describe('authentication API', () => {
 
     await expect(login(payload)).resolves.toEqual({ accessToken: 'jwt-token' })
     expect(http.post).toHaveBeenCalledWith('/auth/login', payload)
+  })
+
+  it('posts customer details to the registration endpoint', async () => {
+    const payload = {
+      username: 'alice',
+      password: 'strong-password',
+      displayName: 'Alice',
+      phoneNumber: '81234567',
+    }
+    http.post.mockResolvedValueOnce({ accountId: 7, customerId: 12 })
+
+    await expect(registerCustomer(payload)).resolves.toEqual({ accountId: 7, customerId: 12 })
+    expect(http.post).toHaveBeenCalledWith('/auth/customer/register', payload)
   })
 })
