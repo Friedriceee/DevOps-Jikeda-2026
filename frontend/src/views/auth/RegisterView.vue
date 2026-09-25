@@ -20,23 +20,23 @@ function validate() {
   const phoneNumber = form.phoneNumber.trim()
 
   if (username.length < 3 || username.length > 50) {
-    ElMessage.warning('用户名长度应为 3 到 50 个字符')
+    ElMessage.warning('Username must be between 3 and 50 characters')
     return false
   }
   if (!displayName || displayName.length > 50) {
-    ElMessage.warning('请输入不超过 50 个字符的显示名称')
+    ElMessage.warning('Enter a display name of no more than 50 characters')
     return false
   }
   if (!/^\d{8,11}$/.test(phoneNumber)) {
-    ElMessage.warning('手机号应为 8 到 11 位数字')
+    ElMessage.warning('Phone number must contain 8 to 11 digits')
     return false
   }
   if (form.password.length < 8 || form.password.length > 100) {
-    ElMessage.warning('密码长度应为 8 到 100 个字符')
+    ElMessage.warning('Password must be between 8 and 100 characters')
     return false
   }
   if (form.password !== form.confirmPassword) {
-    ElMessage.warning('两次输入的密码不一致')
+    ElMessage.warning('Passwords do not match')
     return false
   }
   return true
@@ -54,10 +54,10 @@ async function submit() {
       displayName: form.displayName.trim(),
       phoneNumber: form.phoneNumber.trim(),
     })
-    ElMessage.success('注册成功，请使用新账号登录')
+    ElMessage.success('Registration successful. Please log in with your new account.')
     await router.replace({ name: 'login', query: { username } })
   } catch (error) {
-    if (!error?.userNotified) ElMessage.error('注册失败，请稍后重试')
+    if (!error?.userNotified) ElMessage.error('Registration failed. Please try again later.')
   } finally {
     loading.value = false
   }
@@ -68,43 +68,43 @@ async function submit() {
   <section class="register-page">
     <el-card class="register-card" shadow="never">
       <template #header>
-        <div class="register-title">顾客注册</div>
+        <div class="register-title">Customer Registration</div>
       </template>
 
       <el-form label-position="top" @submit.prevent="submit">
-        <el-form-item label="用户名">
-          <el-input v-model="form.username" autocomplete="username" placeholder="3 到 50 个字符" />
+        <el-form-item label="Username">
+          <el-input v-model="form.username" autocomplete="username" placeholder="3 to 50 characters" />
         </el-form-item>
-        <el-form-item label="显示名称">
-          <el-input v-model="form.displayName" autocomplete="name" placeholder="请输入显示名称" />
+        <el-form-item label="Display Name">
+          <el-input v-model="form.displayName" autocomplete="name" placeholder="Enter your display name" />
         </el-form-item>
-        <el-form-item label="手机号">
-          <el-input v-model="form.phoneNumber" autocomplete="tel" placeholder="8 到 11 位数字" />
+        <el-form-item label="Phone Number">
+          <el-input v-model="form.phoneNumber" autocomplete="tel" placeholder="8 to 11 digits" />
         </el-form-item>
-        <el-form-item label="密码">
+        <el-form-item label="Password">
           <el-input
             v-model="form.password"
             type="password"
             show-password
             autocomplete="new-password"
-            placeholder="至少 8 个字符"
+            placeholder="At least 8 characters"
           />
         </el-form-item>
-        <el-form-item label="确认密码">
+        <el-form-item label="Confirm Password">
           <el-input
             v-model="form.confirmPassword"
             type="password"
             show-password
             autocomplete="new-password"
-            placeholder="请再次输入密码"
+            placeholder="Enter your password again"
           />
         </el-form-item>
         <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">
-          注册
+          Register
         </el-button>
         <div class="login-link">
-          已有账号？
-          <el-button link type="primary" @click="router.push({ name: 'login' })">返回登录</el-button>
+          Already have an account?
+          <el-button link type="primary" @click="router.push({ name: 'login' })">Back to login</el-button>
         </div>
       </el-form>
     </el-card>

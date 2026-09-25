@@ -18,7 +18,7 @@ export function unwrapApiResponse(response, notify = () => {}) {
   const body = response.data
   if (body && typeof body === 'object' && 'success' in body) {
     if (!body.success) {
-      const message = body.message || '请求失败'
+      const message = body.message || 'Request failed'
       notify(message)
       const error = new Error(message)
       error.userNotified = true
@@ -32,7 +32,7 @@ export function unwrapApiResponse(response, notify = () => {}) {
 export function handleApiError(error, { authStore, router, notify = () => {} }) {
   if (error.response?.status === 401) {
     authStore.clearSession()
-    notify('登录已失效，请重新登录')
+    notify('Your session has expired. Please log in again.')
     error.userNotified = true
     if (router.currentRoute.value.name !== 'login') {
       router.push({
@@ -41,7 +41,7 @@ export function handleApiError(error, { authStore, router, notify = () => {} }) 
       })
     }
   } else {
-    notify(error.response?.data?.message || '网络错误，请稍后重试')
+    notify(error.response?.data?.message || 'Network error. Please try again later.')
     error.userNotified = true
   }
   return Promise.reject(error)

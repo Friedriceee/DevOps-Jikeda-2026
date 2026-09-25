@@ -49,7 +49,7 @@ describe('RegisterView', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(mocks.registerCustomer).not.toHaveBeenCalled()
-    expect(mocks.messageWarning).toHaveBeenCalledWith('用户名长度应为 3 到 50 个字符')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('Username must be between 3 and 50 characters')
   })
 
   it('rejects mismatched passwords', async () => {
@@ -63,7 +63,7 @@ describe('RegisterView', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(mocks.registerCustomer).not.toHaveBeenCalled()
-    expect(mocks.messageWarning).toHaveBeenCalledWith('两次输入的密码不一致')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('Passwords do not match')
   })
 
   it('registers a customer and returns to login with the username filled', async () => {
@@ -84,7 +84,9 @@ describe('RegisterView', () => {
       displayName: 'Alice Customer',
       phoneNumber: '81234567',
     })
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('注册成功，请使用新账号登录')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith(
+      'Registration successful. Please log in with your new account.',
+    )
     expect(mocks.replace).toHaveBeenCalledWith({
       name: 'login',
       query: { username: 'alice' },
@@ -104,7 +106,7 @@ describe('RegisterView', () => {
     await flushPromises()
 
     expect(mocks.replace).not.toHaveBeenCalled()
-    expect(mocks.messageError).toHaveBeenCalledWith('注册失败，请稍后重试')
+    expect(mocks.messageError).toHaveBeenCalledWith('Registration failed. Please try again later.')
     expect(wrapper.find('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })
 })

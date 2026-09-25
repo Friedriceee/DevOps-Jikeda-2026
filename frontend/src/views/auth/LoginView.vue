@@ -18,11 +18,11 @@ const loading = ref(false)
 
 function validate() {
   if (!form.username.trim()) {
-    ElMessage.warning('请输入用户名')
+    ElMessage.warning('Enter your username')
     return false
   }
   if (!form.password) {
-    ElMessage.warning('请输入密码')
+    ElMessage.warning('Enter your password')
     return false
   }
   return true
@@ -38,12 +38,12 @@ async function submit() {
       password: form.password,
     })
     authStore.setSession(session)
-    ElMessage.success('登录成功')
+    ElMessage.success('Login successful')
 
     const redirect = postLoginDestination(route.query.redirect, authStore.role)
     await router.replace(redirect)
   } catch (error) {
-    if (!error?.userNotified) ElMessage.error('登录失败，请稍后重试')
+    if (!error?.userNotified) ElMessage.error('Login failed. Please try again later.')
   } finally {
     loading.value = false
   }
@@ -54,28 +54,28 @@ async function submit() {
   <section class="login-page">
     <el-card class="login-card" shadow="never">
       <template #header>
-        <div class="login-title">顾客登录</div>
+        <div class="login-title">Customer Login</div>
       </template>
 
       <el-form label-position="top" @submit.prevent="submit">
-        <el-form-item label="用户名">
-          <el-input v-model="form.username" autocomplete="username" placeholder="请输入用户名" />
+        <el-form-item label="Username">
+          <el-input v-model="form.username" autocomplete="username" placeholder="Enter your username" />
         </el-form-item>
-        <el-form-item label="密码">
+        <el-form-item label="Password">
           <el-input
             v-model="form.password"
             type="password"
             show-password
             autocomplete="current-password"
-            placeholder="请输入密码"
+            placeholder="Enter your password"
           />
         </el-form-item>
         <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">
-          登录
+          Log In
         </el-button>
         <div class="register-link">
-          还没有账号？
-          <el-button link type="primary" @click="router.push({ name: 'register' })">立即注册</el-button>
+          Don't have an account?
+          <el-button link type="primary" @click="router.push({ name: 'register' })">Register now</el-button>
         </div>
       </el-form>
     </el-card>

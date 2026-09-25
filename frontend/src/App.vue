@@ -8,7 +8,7 @@ const authStore = useAuthStore()
 
 async function logout() {
   authStore.clearSession()
-  ElMessage.success('已退出登录')
+  ElMessage.success('Logged out successfully')
   await router.push({ name: 'home' })
 }
 </script>
@@ -16,13 +16,13 @@ async function logout() {
 <template>
   <el-container style="min-height: 100vh">
     <el-header class="app-header">
-      外卖平台
+      Takeout Platform
       <div class="header-actions">
         <span v-if="authStore.isAuthenticated" class="user-info">
-          {{ authStore.user?.displayName || authStore.role || '已登录' }}
+          {{ authStore.user?.displayName || authStore.role || 'Signed in' }}
         </span>
-        <el-button v-if="authStore.isAuthenticated" link @click="logout">退出登录</el-button>
-        <el-button v-else link @click="router.push({ name: 'login' })">登录</el-button>
+        <el-button v-if="authStore.isAuthenticated" link @click="logout">Log out</el-button>
+        <el-button v-else link @click="router.push({ name: 'login' })">Log in</el-button>
       </div>
     </el-header>
     <el-main>

@@ -75,12 +75,12 @@ describe('LoginView', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(mocks.login).not.toHaveBeenCalled()
-    expect(mocks.messageWarning).toHaveBeenCalledWith('请输入用户名')
+    expect(mocks.messageWarning).toHaveBeenCalledWith('Enter your username')
   })
 
   it('links visitors to customer registration', async () => {
     const wrapper = mount(LoginView, { global: { stubs } })
-    const registerButton = wrapper.findAll('button').find((button) => button.text() === '立即注册')
+    const registerButton = wrapper.findAll('button').find((button) => button.text() === 'Register now')
 
     await registerButton.trigger('click')
 
@@ -105,7 +105,7 @@ describe('LoginView', () => {
     expect(mocks.login).toHaveBeenCalledWith({ username: 'alice', password: 'secret' })
     expect(useAuthStore().token).toBe('jwt-token')
     expect(mocks.replace).toHaveBeenCalledWith('/customer/cart')
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('登录成功')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('Login successful')
   })
 
   it('uses the merchant browsing page as the default destination', async () => {
@@ -143,7 +143,7 @@ describe('LoginView', () => {
 
     expect(useAuthStore().isAuthenticated).toBe(false)
     expect(mocks.replace).not.toHaveBeenCalled()
-    expect(mocks.messageError).toHaveBeenCalledWith('登录失败，请稍后重试')
+    expect(mocks.messageError).toHaveBeenCalledWith('Login failed. Please try again later.')
     expect(wrapper.find('button').attributes('disabled')).toBeUndefined()
   })
 })
