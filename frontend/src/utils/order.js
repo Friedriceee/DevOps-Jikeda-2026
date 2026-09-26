@@ -3,12 +3,12 @@
  * 与后端 CreateOrderRequest / OrderStatus 对应。
  */
 
-// 订单状态数值 -> 中文文案（与后端 OrderStatus 枚举数值一致）
+// Order status values match the backend OrderStatus enum.
 const STATUS_TEXT = {
-  0: '待支付',
-  1: '已付款',
-  2: '配送中',
-  3: '已送达',
+  0: 'Pending payment',
+  1: 'Paid',
+  2: 'Out for delivery',
+  3: 'Delivered',
 }
 
 /**
@@ -17,7 +17,7 @@ const STATUS_TEXT = {
  * @returns {string}
  */
 export function orderStatusText(status) {
-  return STATUS_TEXT[Number(status)] ?? '未知状态'
+  return STATUS_TEXT[Number(status)] ?? 'Unknown status'
 }
 
 /**
@@ -86,11 +86,12 @@ export function buildOrderPayload({
   couponId = 0,
   expirationDate = null,
   orderTimestamp = null,
+  price = null,
 }) {
   return {
     userId: Number(userId),
     addressId: Number(addressId),
-    price: orderTotalPrice(cart, riderPrice),
+    price: price === null ? orderTotalPrice(cart, riderPrice) : Number(price),
     orderTimestamp: orderTimestamp ?? new Date().toISOString(),
     needUtensils: Number(needUtensils),
     riderPrice: Number(riderPrice || 0),

@@ -26,4 +26,10 @@ export const routes = [
     component: () => import('@/views/customer/MerchantBrowseView.vue'),
     meta: { requiresAuth: false },
   },
+  {
+    path: '/customer/cart',
+    name: 'customer-cart',
+    component: () => import('@/views/customer/CustomerCartView.vue'),
+    meta: { requiresAuth: true, role: 'Customer' },
+  },
 ]

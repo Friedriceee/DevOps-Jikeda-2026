@@ -14,11 +14,15 @@ export function addBearerToken(config, token) {
   return config
 }
 
+export function isAnonymousAuthRequest(url = '') {
+  return url === '/auth/login' || url === '/auth/customer/register'
+}
+
 export function unwrapApiResponse(response, notify = () => {}) {
   const body = response.data
   if (body && typeof body === 'object' && 'success' in body) {
     if (!body.success) {
-      const message = body.message || 'Request failed'
+      const message = body.message || 'Request failed.'
       notify(message)
       const error = new Error(message)
       error.userNotified = true
@@ -32,7 +36,7 @@ export function unwrapApiResponse(response, notify = () => {}) {
 export function handleApiError(error, { authStore, router, notify = () => {} }) {
   if (error.response?.status === 401) {
     authStore.clearSession()
-    notify('Your session has expired. Please log in again.')
+    notify('Your session has expired. Please sign in again.')
     error.userNotified = true
     if (router.currentRoute.value.name !== 'login') {
       router.push({
@@ -41,7 +45,7 @@ export function handleApiError(error, { authStore, router, notify = () => {} }) 
       })
     }
   } else {
-    notify(error.response?.data?.message || 'Network error. Please try again later.')
+    notify(error.response?.data?.message || 'Network error. Please try again.')
     error.userNotified = true
   }
   return Promise.reject(error)
@@ -50,7 +54,7 @@ export function handleApiError(error, { authStore, router, notify = () => {} }) 
 // 请求拦截：为需要登录的接口自动附加 JWT
 http.interceptors.request.use((config) => {
   const authStore = useAuthStore()
-  return addBearerToken(config, authStore.token)
+  return isAnonymousAuthRequest(config.url) ? config : addBearerToken(config, authStore.token)
 })
 
 // 响应拦截：拆掉统一响应外壳，失败时弹提示

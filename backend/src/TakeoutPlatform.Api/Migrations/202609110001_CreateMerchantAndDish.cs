@@ -58,6 +58,7 @@ public partial class CreateMerchantAndDish : Migration
         migrationBuilder.InsertData(
             table: "Merchants",
             columns: new[] { "Id", "Name" },
+            columnTypes: new[] { "integer", "character varying(100)" },
             values: new object[] { 1, "Demo Merchant" });
     }
 

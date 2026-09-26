@@ -166,6 +166,7 @@ public partial class AddUserAddressAndOrders : Migration
         migrationBuilder.InsertData(
             table: "Users",
             columns: new[] { "Id", "PhoneNumber", "UserName", "Wallet" },
+            columnTypes: new[] { "integer", "character varying(11)", "character varying(50)", "numeric(18,2)" },
             values: new object[] { 1, "13800000000", "Demo User", 1000.00m });
 
         // ---------- 索引 ----------
