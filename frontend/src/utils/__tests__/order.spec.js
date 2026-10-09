@@ -15,6 +15,10 @@ describe('order status helpers', () => {
     expect(orderStatusText(1)).toBe('Paid')
     expect(orderStatusText(2)).toBe('Out for delivery')
     expect(orderStatusText(3)).toBe('Delivered')
+    expect(orderStatusText(4)).toBe('Accepted')
+    expect(orderStatusText(5)).toBe('Preparing')
+    expect(orderStatusText(6)).toBe('Ready for delivery')
+    expect(orderStatusText(10)).toBe('Rejected')
     expect(orderStatusText(99)).toBe('Unknown status')
   })
 

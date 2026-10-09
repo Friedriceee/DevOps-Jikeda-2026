@@ -9,10 +9,18 @@ const STATUS_TEXT = {
   1: 'Paid',
   2: 'Out for delivery',
   3: 'Delivered',
+  4: 'Accepted',
+  5: 'Preparing',
+  6: 'Ready for delivery',
+  7: 'Courier assigned',
+  8: 'Picked up',
+  9: 'Completed',
+  10: 'Rejected',
+  11: 'Cancelled',
 }
 
 /**
- * 把订单状态数值转成中文文案。
+ * Convert a numeric order status to its English display label.
  * @param {number} status
  * @returns {string}
  */

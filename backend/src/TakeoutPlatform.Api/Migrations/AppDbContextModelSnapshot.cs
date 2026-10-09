@@ -297,6 +297,34 @@ namespace TakeoutPlatform.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment", b =>
+                {
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MerchantId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("InventoryRestored")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("OrderId", "MerchantId");
+
+                    b.HasIndex("MerchantId");
+
+                    b.ToTable("MerchantOrderFulfillments");
+                });
+
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -361,6 +389,23 @@ namespace TakeoutPlatform.Api.Migrations
                     b.HasKey("OrderId");
 
                     b.ToTable("OrderCoupons");
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment", b =>
+                {
+                    b.HasOne("TakeoutPlatform.Api.Features.Merchant.Merchant", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TakeoutPlatform.Api.Features.Order.Order", "Order")
+                        .WithMany("MerchantFulfillments")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.OrderDish", b =>
@@ -591,6 +636,8 @@ namespace TakeoutPlatform.Api.Migrations
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.Order", b =>
                 {
+                    b.Navigation("MerchantFulfillments");
+
                     b.Navigation("OrderCoupon");
 
                     b.Navigation("OrderDishes");

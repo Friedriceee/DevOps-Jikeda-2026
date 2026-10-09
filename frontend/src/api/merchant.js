@@ -38,3 +38,11 @@ export function deleteSpecialOffer(offerId, merchantId) {
     { params: { merchantId } },
   )
 }
+
+export function listMerchantOrders() {
+  return http.get('/merchant/orders')
+}
+
+export function transitionMerchantOrder(orderId, action, reason = null) {
+  return http.put(`/merchant/orders/${orderId}/status`, { action, reason })
+}
