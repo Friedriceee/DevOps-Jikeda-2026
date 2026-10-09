@@ -1,34 +1,17 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
-import { cancelOrder, createOrder, listAddresses, listOrders } from '@/api/order'
-import { buildOrderPayload, canPlaceOrder, isPending, orderStatusText } from '@/utils/order'
+import { cancelOrder, listOrders } from '@/api/order'
+import { isPending, orderStatusText } from '@/utils/order'
 import { formatYuan } from '@/utils/money'
 
-const cart = useCartStore()
 const authStore = useAuthStore()
 
-const addresses = ref([])
-const selectedAddressId = ref(null)
 const orders = ref([])
-const riderPrice = ref(3)
 const loading = ref(false)
-const submitting = ref(false)
 
 const userId = computed(() => authStore.user?.profileId ?? null)
-const totalPrice = computed(() => Math.round((Number(cart.total) + Number(riderPrice.value || 0)) * 100) / 100)
-const canSubmit = computed(() =>
-  canPlaceOrder({ addressId: selectedAddressId.value, cart: cart.items }))
-
-async function loadAddresses() {
-  if (!userId.value) return
-  addresses.value = await listAddresses(userId.value)
-  if (addresses.value.length > 0 && !selectedAddressId.value) {
-    selectedAddressId.value = addresses.value[0].id
-  }
-}
 
 async function loadOrders() {
   loading.value = true
@@ -37,29 +20,6 @@ async function loadOrders() {
     orders.value = await listOrders(userId.value)
   } finally {
     loading.value = false
-  }
-}
-
-async function placeOrder() {
-  if (!canSubmit.value) {
-    ElMessage.warning('Choose a delivery address and add items before placing an order.')
-    return
-  }
-  submitting.value = true
-  try {
-    const payload = buildOrderPayload({
-      userId: userId.value,
-      addressId: selectedAddressId.value,
-      cart: cart.items,
-      riderPrice: riderPrice.value,
-      price: totalPrice.value,
-    })
-    await createOrder(payload)
-    ElMessage.success('Order placed successfully.')
-    await cart.clear()
-    await loadOrders()
-  } finally {
-    submitting.value = false
   }
 }
 
@@ -78,11 +38,7 @@ async function removeOrder(order) {
   }
 }
 
-onMounted(async () => {
-  await cart.load()
-  await loadAddresses()
-  await loadOrders()
-})
+onMounted(loadOrders)
 </script>
 
 <template>
@@ -90,45 +46,10 @@ onMounted(async () => {
     <div class="page-heading">
       <div>
         <h1>Your orders</h1>
-        <p>Review your cart and delivery details before placing an order.</p>
+        <p>Track placed orders and cancel orders that are still pending payment.</p>
       </div>
       <el-button :loading="loading" @click="loadOrders">Refresh</el-button>
     </div>
-
-    <el-card class="form-card" shadow="never">
-      <template #header>Checkout</template>
-      <el-form label-position="top">
-        <el-form-item label="Delivery address">
-          <el-select v-model="selectedAddressId" placeholder="Select a delivery address" style="width: 100%">
-            <el-option
-              v-for="addr in addresses"
-              :key="addr.id"
-              :label="`${addr.contactName} ${addr.phoneNumber} - ${addr.address}`"
-              :value="addr.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Delivery fee">
-          <el-input-number v-model="riderPrice" :min="0" :step="1" controls-position="right" />
-        </el-form-item>
-      </el-form>
-
-      <el-table :data="cart.items" stripe>
-        <el-table-column prop="name" label="Dish" min-width="160" />
-        <el-table-column label="Unit price" width="120">
-          <template #default="scope">{{ formatYuan(scope.row.price) }}</template>
-        </el-table-column>
-        <el-table-column prop="dishNum" label="Quantity" width="100" />
-      </el-table>
-      <el-empty v-if="cart.items.length === 0" description="Your cart is empty." />
-
-      <div class="summary">
-        <span>Total including delivery: <strong>{{ formatYuan(totalPrice) }}</strong></span>
-        <el-button type="primary" :loading="submitting" :disabled="!canSubmit" @click="placeOrder">
-          Place order
-        </el-button>
-      </div>
-    </el-card>
 
     <el-card shadow="never">
       <template #header>Order history</template>
@@ -164,6 +85,4 @@ onMounted(async () => {
 .page-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
 .page-heading h1 { margin: 0; }
 .page-heading p { color: #6b7280; margin: 6px 0 0; }
-.form-card { margin-bottom: 18px; }
-.summary { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
 </style>

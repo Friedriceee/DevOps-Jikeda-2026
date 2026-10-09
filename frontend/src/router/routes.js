@@ -32,4 +32,10 @@ export const routes = [
     component: () => import('@/views/customer/CustomerCartView.vue'),
     meta: { requiresAuth: true, role: 'Customer' },
   },
+  {
+    path: '/customer/checkout',
+    name: 'customer-checkout',
+    component: () => import('@/views/customer/CheckoutView.vue'),
+    meta: { requiresAuth: true, role: 'Customer' },
+  },
 ]

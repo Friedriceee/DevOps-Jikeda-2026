@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TakeoutPlatform.Api.Data;
+using TakeoutPlatform.Api.Features.Merchant;
+using TakeoutPlatform.Api.Features.Pricing;
 
 namespace TakeoutPlatform.Api.Features.Cart;
 
@@ -25,8 +27,15 @@ public sealed record CartWriteResult(
 public sealed class CartService
 {
     private readonly AppDbContext _db;
+    private readonly IDiscountStrategy _merchantDiscountStrategy;
 
-    public CartService(AppDbContext db) => _db = db;
+    public CartService(AppDbContext db, IEnumerable<IDiscountStrategy>? strategies = null)
+    {
+        _db = db;
+        _merchantDiscountStrategy = strategies?
+            .SingleOrDefault(strategy => strategy.Kind == DiscountStrategyKind.MerchantOffer)
+            ?? new MerchantDiscountStrategy();
+    }
 
     public async Task<CartResponse?> GetAsync(int userId, CancellationToken cancellationToken)
     {
@@ -218,12 +227,19 @@ public sealed class CartService
                     row.UnitPrice * row.DishNum,
                     row.ImageUrl)).ToList();
                 var subtotal = items.Sum(item => item.LineTotal);
-                var discount = offers
-                    .Where(offer => offer.MerchantId == group.Key.MerchantId && offer.MinPrice <= subtotal)
-                    .Select(offer => offer.AmountRemission)
-                    .DefaultIfEmpty(0m)
-                    .Max();
-                discount = Math.Min(discount, subtotal);
+                var groupOffers = offers
+                    .Where(offer => offer.MerchantId == group.Key.MerchantId)
+                    .Select(offer => new SpecialOffer
+                    {
+                        MerchantId = offer.MerchantId,
+                        MinPrice = offer.MinPrice,
+                        AmountRemission = offer.AmountRemission,
+                    })
+                    .ToList();
+                var discount = _merchantDiscountStrategy.Apply(new DiscountContext(
+                    subtotal,
+                    DateTimeOffset.UtcNow,
+                    groupOffers)).Amount;
 
                 return new CartMerchantGroupResponse(
                     group.Key.MerchantId,

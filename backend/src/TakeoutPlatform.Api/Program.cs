@@ -11,6 +11,7 @@ using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.Cart;
 using TakeoutPlatform.Api.Features.User;
+using TakeoutPlatform.Api.Features.Pricing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,6 +75,9 @@ builder.Services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<AddressService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.OrderService>();
+builder.Services.AddScoped<PricingService>();
+builder.Services.AddSingleton<IDiscountStrategy, MerchantDiscountStrategy>();
+builder.Services.AddSingleton<IDiscountStrategy, PlatformCouponDiscountStrategy>();
 
 const string DevCors = "dev-cors";
 builder.Services.AddCors(options =>

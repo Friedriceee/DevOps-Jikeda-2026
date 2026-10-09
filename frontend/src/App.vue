@@ -20,6 +20,7 @@ async function logout() {
       <nav class="main-nav" aria-label="Main navigation">
         <el-button link @click="router.push({ name: 'customer-merchants' })">Explore</el-button>
         <el-button v-if="authStore.role === 'Customer'" link @click="router.push({ name: 'customer-cart' })">Cart</el-button>
+        <el-button v-if="authStore.role === 'Customer'" link @click="router.push({ name: 'user-orders' })">Orders</el-button>
         <el-button v-if="authStore.role === 'Merchant'" link @click="router.push({ name: 'merchant-dishes' })">Merchant portal</el-button>
       </nav>
       <div class="header-actions">

@@ -230,6 +230,73 @@ namespace TakeoutPlatform.Api.Migrations
                     b.ToTable("SpecialOffers");
                 });
 
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Pricing.PlatformCoupon", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MinimumSpend")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("StartsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("PlatformCoupons");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "WELCOME5",
+                            DiscountAmount = 5m,
+                            ExpiresAtUtc = new DateTimeOffset(2099, 12, 31, 23, 59, 59, TimeSpan.Zero),
+                            IsActive = true,
+                            MinimumSpend = 20m,
+                            Name = "Welcome ¥5 off",
+                            StartsAtUtc = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "SAVE12",
+                            DiscountAmount = 12m,
+                            ExpiresAtUtc = new DateTimeOffset(2099, 12, 31, 23, 59, 59, TimeSpan.Zero),
+                            IsActive = true,
+                            MinimumSpend = 80m,
+                            Name = "Save ¥12 on larger orders",
+                            StartsAtUtc = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                        });
+                });
+
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.Order", b =>
                 {
                     b.Property<int>("Id")

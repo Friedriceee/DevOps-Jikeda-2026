@@ -66,7 +66,7 @@ onMounted(loadCart)
       </div>
       <div class="heading-actions">
         <el-button :loading="cart.loading" @click="loadCart">Refresh</el-button>
-        <el-button type="primary" :disabled="cart.items.length === 0" @click="router.push({ name: 'user-orders' })">
+        <el-button type="primary" :disabled="cart.items.length === 0" @click="router.push({ name: 'customer-checkout' })">
           Checkout
         </el-button>
       </div>

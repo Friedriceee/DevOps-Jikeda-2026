@@ -26,5 +26,9 @@ describe('application route access rules', () => {
       requiresAuth: true,
       role: 'Customer',
     })
+    expect(routes.find((route) => route.name === 'customer-checkout').meta).toEqual({
+      requiresAuth: true,
+      role: 'Customer',
+    })
   })
 })

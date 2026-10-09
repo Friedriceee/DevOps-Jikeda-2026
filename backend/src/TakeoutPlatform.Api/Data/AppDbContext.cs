@@ -3,6 +3,7 @@ using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.User;
 using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Cart;
+using TakeoutPlatform.Api.Features.Pricing;
 using Order = TakeoutPlatform.Api.Features.Order.Order;
 using OrderUser = TakeoutPlatform.Api.Features.Order.OrderUser;
 using OrderRider = TakeoutPlatform.Api.Features.Order.OrderRider;
@@ -27,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderDish> OrderDishes => Set<OrderDish>();
     public DbSet<OrderCoupon> OrderCoupons => Set<OrderCoupon>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<PlatformCoupon> PlatformCoupons => Set<PlatformCoupon>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -151,6 +153,39 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(item => item.DishId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PlatformCoupon>(entity =>
+        {
+            entity.Property(coupon => coupon.Code).HasMaxLength(40).IsRequired();
+            entity.Property(coupon => coupon.Name).HasMaxLength(100).IsRequired();
+            entity.Property(coupon => coupon.MinimumSpend).HasPrecision(18, 2);
+            entity.Property(coupon => coupon.DiscountAmount).HasPrecision(18, 2);
+            entity.HasIndex(coupon => coupon.Code).IsUnique();
+
+            entity.HasData(
+                new PlatformCoupon
+                {
+                    Id = 1,
+                    Code = "WELCOME5",
+                    Name = "Welcome ¥5 off",
+                    MinimumSpend = 20m,
+                    DiscountAmount = 5m,
+                    StartsAtUtc = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                    ExpiresAtUtc = new DateTimeOffset(2099, 12, 31, 23, 59, 59, TimeSpan.Zero),
+                    IsActive = true,
+                },
+                new PlatformCoupon
+                {
+                    Id = 2,
+                    Code = "SAVE12",
+                    Name = "Save ¥12 on larger orders",
+                    MinimumSpend = 80m,
+                    DiscountAmount = 12m,
+                    StartsAtUtc = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                    ExpiresAtUtc = new DateTimeOffset(2099, 12, 31, 23, 59, 59, TimeSpan.Zero),
+                    IsActive = true,
+                });
         });
 
         // ---------- 订单五表结构（对应旧项目 OrderDB 等）----------
