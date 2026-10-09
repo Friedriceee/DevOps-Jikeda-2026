@@ -1,3 +1,5 @@
+using TakeoutPlatform.Api.Features.Cart;
+
 namespace TakeoutPlatform.Api.Features.User;
 
 /// <summary>
@@ -14,4 +16,5 @@ public class User
     public decimal Wallet { get; set; }
 
     public ICollection<UserAddress> Addresses { get; set; } = new List<UserAddress>();
+    public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
 }

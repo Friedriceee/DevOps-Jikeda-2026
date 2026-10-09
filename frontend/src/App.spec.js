@@ -41,9 +41,9 @@ describe('App authentication controls', () => {
 
   it('offers login to a visitor and navigates to the login page', async () => {
     const wrapper = mount(App, { global: { stubs } })
-    await wrapper.find('button').trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === 'Sign in').trigger('click')
 
-    expect(wrapper.text()).toContain('Log in')
+    expect(wrapper.text()).toContain('Sign in')
     expect(mocks.push).toHaveBeenCalledWith({ name: 'login' })
   })
 
@@ -52,12 +52,12 @@ describe('App authentication controls', () => {
     const wrapper = mount(App, { global: { stubs } })
     const buttons = wrapper.findAll('button')
     expect(wrapper.text()).toContain('Alice')
-    expect(buttons.map((button) => button.text())).toContain('Log out')
+    expect(buttons.map((button) => button.text())).toContain('Sign out')
 
-    await buttons[0].trigger('click')
+    await buttons.find((button) => button.text() === 'Sign out').trigger('click')
 
     expect(useAuthStore().isAuthenticated).toBe(false)
     expect(mocks.push).toHaveBeenCalledWith({ name: 'home' })
-    expect(mocks.messageSuccess).toHaveBeenCalledWith('Logged out successfully')
+    expect(mocks.messageSuccess).toHaveBeenCalledWith('You have been signed out.')
   })
 })

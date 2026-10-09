@@ -28,7 +28,7 @@ const form = reactive({
 
 function validateOffer(_rule, _value, callback) {
   if (!isValidSpecialOffer(form.minPrice, form.amountRemission)) {
-    callback(new Error('满减门槛和减免金额必须为两位小数以内的正数，且减免金额小于门槛'))
+    callback(new Error('Both values must be positive with at most two decimal places, and the discount must be lower than the minimum order price.'))
     return
   }
 
@@ -79,12 +79,12 @@ async function submit() {
         merchantStore.merchantId,
         buildSpecialOfferUpdatePayload(form),
       )
-      ElMessage.success('满减活动更新成功')
+      ElMessage.success('Special offer updated.')
     } else {
       await createSpecialOffer(
         buildSpecialOfferPayload(form, merchantStore.merchantId),
       )
-      ElMessage.success('满减活动创建成功')
+      ElMessage.success('Special offer created.')
     }
 
     await loadOffers()
@@ -98,15 +98,15 @@ async function submit() {
 async function removeOffer(offer) {
   try {
     await ElMessageBox.confirm(
-      `确定要删除“满${offer.minPrice}减${offer.amountRemission}”活动吗？`,
-      '确认删除活动',
-      { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' },
+      `Delete the offer: spend ${offer.minPrice}, save ${offer.amountRemission}?`,
+      'Delete special offer',
+      { type: 'warning', confirmButtonText: 'Delete', cancelButtonText: 'Keep offer' },
     )
     await deleteSpecialOffer(offer.id, merchantStore.merchantId)
     if (editingOfferId.value === offer.id) {
       cancelEdit()
     }
-    ElMessage.success('满减活动已删除')
+    ElMessage.success('Special offer deleted.')
     await loadOffers()
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') throw error

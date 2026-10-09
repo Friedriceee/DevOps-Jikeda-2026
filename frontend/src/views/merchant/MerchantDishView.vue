@@ -26,7 +26,7 @@ const rules = {
     {
       validator: (_rule, value, callback) => {
         if (!isValidDishName(value)) {
-          callback(new Error('菜品名称必须为 1-50 个字符'))
+          callback(new Error('Dish name must be 1–50 characters.'))
           return
         }
         callback()
@@ -38,11 +38,11 @@ const rules = {
     {
       validator: (_rule, value, callback) => {
         if (!isValidPrice(value)) {
-          callback(new Error('价格必须大于 0'))
+          callback(new Error('Price must be greater than zero.'))
           return
         }
         if (Math.round(Number(value) * 100) / 100 !== Number(value)) {
-          callback(new Error('价格最多保留两位小数'))
+          callback(new Error('Price can have at most two decimal places.'))
           return
         }
         callback()
@@ -54,7 +54,7 @@ const rules = {
     {
       validator: (_rule, value, callback) => {
         if (!isValidInventory(value)) {
-          callback(new Error('库存必须是大于等于 0 的整数'))
+          callback(new Error('Inventory must be a whole number of zero or more.'))
           return
         }
         callback()
@@ -109,11 +109,11 @@ async function submit() {
         merchantStore.merchantId,
         buildDishUpdatePayload(form),
       )
-      ElMessage.success('菜品更新成功')
+      ElMessage.success('Dish updated.')
       editingDishId.value = null
     } else {
       await createDish(buildDishPayload(form, merchantStore.merchantId))
-      ElMessage.success('菜品创建成功')
+      ElMessage.success('Dish created.')
     }
     resetForm()
     await loadDishes()
@@ -125,13 +125,13 @@ async function submit() {
 async function removeDish(dish) {
   try {
     await ElMessageBox.confirm(
-      `确定要下架并删除“${dish.name}”吗？`,
-      '确认下架菜品',
-      { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' },
+      `Delist and delete “${dish.name}”?`,
+      'Delist dish',
+      { type: 'warning', confirmButtonText: 'Delist', cancelButtonText: 'Keep dish' },
     )
     await deleteDish(dish.id, merchantStore.merchantId)
     if (editingDishId.value === dish.id) cancelEdit()
-    ElMessage.success('菜品已下架')
+    ElMessage.success('Dish delisted.')
     await loadDishes()
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') throw error

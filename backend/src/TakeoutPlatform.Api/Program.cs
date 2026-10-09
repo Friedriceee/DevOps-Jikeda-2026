@@ -9,6 +9,7 @@ using TakeoutPlatform.Api.Common;
 using TakeoutPlatform.Api.Data;
 using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Merchant;
+using TakeoutPlatform.Api.Features.Cart;
 using TakeoutPlatform.Api.Features.User;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -67,6 +68,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<DishService>();
 builder.Services.AddScoped<SpecialOfferService>();
 builder.Services.AddScoped<MerchantRegistrationService>();
+builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
 builder.Services.AddSingleton(TimeProvider.System);

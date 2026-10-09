@@ -30,6 +30,37 @@ HTTP 状态码：成功 `200`（创建 `201`）、参数错误 `400`、未找到
 
 受保护接口使用 `Authorization: Bearer <token>`。未携带有效 token 返回 `401`，角色无权访问返回 `403`。商家菜品和满减活动的写接口只允许 `Merchant`；顾客地址和订单接口只允许 `Customer`。服务端以 JWT 的 `profile_id` 为身份依据，请求中的 `merchantId` / `userId` 仅为旧客户端兼容字段，不能改变访问主体。商家菜品与满减列表继续允许匿名浏览。
 
+## Sprint 2：顾客购物车
+
+所有购物车接口均要求 `Customer` JWT。顾客身份只取 JWT 的 `profile_id`；请求体不接受 `userId`、`merchantId`、价格或优惠金额。服务端从菜品、商家和 `SpecialOffer` 实时计算金额，按商家分组，并在每组中自动应用符合门槛的最大满减金额。
+
+### 查询购物车
+
+```
+GET /api/cart
+```
+
+返回的 `data` 包含 `merchants`（每个商家有 `items`、`subtotal`、`discount` 和 `total`）、以及全车 `totalCount`、`subtotal`、`discount` 和 `total`。每个项目包含 `id`（购物车项 ID）、`dishId`、`dishName`、`unitPrice`、`dishNum` 和 `lineTotal`。
+
+### 添加和修改商品
+
+```
+POST /api/cart/items
+PUT  /api/cart/items/{cartItemId}
+```
+
+POST 请求体为 `{ "dishId": 12, "dishNum": 1 }`。相同顾客和菜品会合并为一项并累加数量。PUT 请求体为 `{ "dishNum": 3 }`，将数量设为该绝对值。数量须为正整数且不得超过菜品当前库存；菜品不存在返回 `404`，库存不足返回 `400`。成功均返回最新的完整购物车快照（POST 为 `201`，PUT 为 `200`）。
+
+### 删除商品或清空
+
+```
+DELETE /api/cart/items/{cartItemId}
+DELETE /api/cart/merchants/{merchantId}
+DELETE /api/cart
+```
+
+依次用于删除一项、清空一个商家的购物车项和清空整个购物车；成功返回最新的完整购物车快照。购物车项只允许其所属顾客操作，其他顾客访问同一 ID 返回 `404`。
+
 ## US-08 商家注册
 
 `POST /api/merchant/register`，请求体：`username`（3–50 字符，唯一）、`password`（6–100 字符）、`merchantName`（必填）、`merchantAddress`（必填）、`contact`（必填）、`dishType`（可选）、`timeForOpenBusiness` 和 `timeForCloseBusiness`（当天秒数，0–86399）、`walletPassword`（6–100 字符）。

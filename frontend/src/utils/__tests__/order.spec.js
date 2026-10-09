@@ -10,12 +10,12 @@ import {
 } from '@/utils/order'
 
 describe('order status helpers', () => {
-  it('maps status numbers to Chinese text', () => {
-    expect(orderStatusText(0)).toBe('待支付')
-    expect(orderStatusText(1)).toBe('已付款')
-    expect(orderStatusText(2)).toBe('配送中')
-    expect(orderStatusText(3)).toBe('已送达')
-    expect(orderStatusText(99)).toBe('未知状态')
+  it('maps status numbers to English text', () => {
+    expect(orderStatusText(0)).toBe('Pending payment')
+    expect(orderStatusText(1)).toBe('Paid')
+    expect(orderStatusText(2)).toBe('Out for delivery')
+    expect(orderStatusText(3)).toBe('Delivered')
+    expect(orderStatusText(99)).toBe('Unknown status')
   })
 
   it('treats only status 0 as pending (cancellable)', () => {

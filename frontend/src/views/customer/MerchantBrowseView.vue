@@ -1,9 +1,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { listMerchantMenu, listMerchants } from '@/api/customer'
+import { useCartStore } from '@/stores/cart'
 import { formatYuan } from '@/utils/money'
 
+const router = useRouter()
+const cart = useCartStore()
 const merchants = ref([])
 const dishes = ref([])
 const selectedMerchant = ref(null)
@@ -11,6 +15,7 @@ const merchantsLoading = ref(false)
 const menuLoading = ref(false)
 const loadError = ref('')
 const menuError = ref('')
+const addingDishId = ref(null)
 
 const visibleDishes = computed(() => dishes.value.filter((dish) => dish.isActive !== false))
 
@@ -25,7 +30,7 @@ async function loadMerchants() {
     merchants.value = await listMerchants()
     if (merchants.value.length > 0) await selectMerchant(merchants.value[0])
   } catch {
-    loadError.value = '商家信息加载失败，请稍后重试'
+    loadError.value = 'Could not load restaurants. Please try again.'
   } finally {
     merchantsLoading.value = false
   }
@@ -39,7 +44,7 @@ async function selectMerchant(merchant) {
   try {
     dishes.value = await listMerchantMenu(merchant.id)
   } catch {
-    menuError.value = '菜单加载失败，请稍后重试'
+    menuError.value = 'Could not load this menu. Please try again.'
   } finally {
     menuLoading.value = false
   }
@@ -49,9 +54,15 @@ function showPromotion(merchant) {
   return merchant.promotionInfo || merchant.specialOffer?.description || ''
 }
 
-function handleAddToCart(dish) {
+async function handleAddToCart(dish) {
   if (isSoldOut(dish)) return
-  ElMessage.info('购物车功能将在本 Sprint 的后续功能中接入')
+  addingDishId.value = dish.id
+  try {
+    await cart.addItem(dish)
+    ElMessage.success('Added to your cart.')
+  } finally {
+    addingDishId.value = null
+  }
 }
 
 onMounted(loadMerchants)
@@ -62,9 +73,14 @@ onMounted(loadMerchants)
     <div class="page-heading">
       <div>
         <h1>Browse Merchants and Menu</h1>
-        <p>查看商家和可售菜品</p>
+        <p>Choose a restaurant and add available dishes to your cart.</p>
       </div>
-      <el-button :loading="merchantsLoading" @click="loadMerchants">Refresh</el-button>
+      <div class="heading-actions">
+        <el-button @click="router.push({ name: 'customer-cart' })">
+          Cart{{ cart.totalCount ? ` (${cart.totalCount})` : '' }}
+        </el-button>
+        <el-button :loading="merchantsLoading" @click="loadMerchants">Refresh</el-button>
+      </div>
     </div>
 
     <el-alert v-if="loadError" :title="loadError" type="error" show-icon />
@@ -74,7 +90,7 @@ onMounted(loadMerchants)
         <el-card shadow="never">
           <template #header>Merchants</template>
           <el-skeleton v-if="merchantsLoading" :rows="5" animated />
-          <el-empty v-else-if="merchants.length === 0" description="暂无商家" />
+          <el-empty v-else-if="merchants.length === 0" description="No restaurants are available yet." />
           <div v-else class="merchant-list">
             <button
               v-for="merchant in merchants"
@@ -85,8 +101,8 @@ onMounted(loadMerchants)
               @click="selectMerchant(merchant)"
             >
               <strong>{{ merchant.name }}</strong>
-              <span>{{ merchant.address || '地址暂未提供' }}</span>
-              <small>{{ merchant.openingHours || '营业时间暂未提供' }}</small>
+              <span>{{ merchant.address || 'Address unavailable' }}</span>
+              <small>{{ merchant.openingHours || 'Hours unavailable' }}</small>
             </button>
           </div>
         </el-card>
@@ -103,26 +119,27 @@ onMounted(loadMerchants)
 
           <el-skeleton v-if="menuLoading" :rows="6" animated />
           <el-alert v-else-if="menuError" :title="menuError" type="error" show-icon />
-          <el-empty v-else-if="!selectedMerchant" description="请选择商家" />
-          <el-empty v-else-if="visibleDishes.length === 0" description="该商家暂无可售菜品" />
+          <el-empty v-else-if="!selectedMerchant" description="Select a restaurant to view its menu." />
+          <el-empty v-else-if="visibleDishes.length === 0" description="No dishes are currently available." />
           <div v-else class="dish-grid">
             <el-card v-for="dish in visibleDishes" :key="dish.id" class="dish-card" shadow="hover">
               <img v-if="dish.imageUrl" :src="dish.imageUrl" :alt="dish.name" class="dish-image">
               <div class="dish-content">
                 <div class="dish-title">
                   <strong>{{ dish.name }}</strong>
-                  <el-tag v-if="isSoldOut(dish)" type="info" size="small">售罄</el-tag>
+                  <el-tag v-if="isSoldOut(dish)" type="info" size="small">Sold out</el-tag>
                 </div>
-                <span class="dish-category">{{ dish.category || '未分类' }}</span>
+                <span class="dish-category">{{ dish.category || 'Uncategorised' }}</span>
                 <div class="dish-footer">
                   <strong class="dish-price">{{ formatYuan(dish.price) }}</strong>
                   <el-button
                     size="small"
                     type="primary"
-                    :disabled="isSoldOut(dish)"
+                    :disabled="isSoldOut(dish) || addingDishId === dish.id"
+                    :loading="addingDishId === dish.id"
                     @click="handleAddToCart(dish)"
                   >
-                    加入购物车
+                    Add to cart
                   </el-button>
                 </div>
               </div>
@@ -132,7 +149,7 @@ onMounted(loadMerchants)
           <el-alert
             v-if="selectedMerchant && showPromotion(selectedMerchant)"
             class="promotion-note"
-            :title="`优惠信息：${showPromotion(selectedMerchant)}`"
+            :title="`Special offer: ${showPromotion(selectedMerchant)}`"
             type="info"
             :closable="false"
           />
@@ -145,6 +162,7 @@ onMounted(loadMerchants)
 <style scoped>
 .browse-page { max-width: 1180px; margin: 0 auto; }
 .page-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.heading-actions { display: flex; gap: 8px; }
 .page-heading h1 { margin: 0; }
 .page-heading p { color: #6b7280; margin: 6px 0 0; }
 .content-grid { margin-top: 18px; }
