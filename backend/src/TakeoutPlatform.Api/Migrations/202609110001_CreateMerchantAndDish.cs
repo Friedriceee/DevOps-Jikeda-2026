@@ -55,10 +55,15 @@ public partial class CreateMerchantAndDish : Migration
             table: "Dishes",
             column: "MerchantId");
 
+//        migrationBuilder.InsertData(
+//            table: "Merchants",
+//            columns: new[] { "Id", "Name" },
+//            values: new object[] { 1, "Demo Merchant" });
         migrationBuilder.InsertData(
-            table: "Merchants",
-            columns: new[] { "Id", "Name" },
-            values: new object[] { 1, "Demo Merchant" });
+                table: "Merchants",
+                columns: new[] { "Id", "Name" },
+                columnTypes: new[] { "integer", "character varying(100)" },
+                values: new object[] { 1, "Demo Merchant" });
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
