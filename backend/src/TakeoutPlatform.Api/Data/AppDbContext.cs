@@ -9,6 +9,7 @@ using OrderUser = TakeoutPlatform.Api.Features.Order.OrderUser;
 using OrderRider = TakeoutPlatform.Api.Features.Order.OrderRider;
 using OrderDish = TakeoutPlatform.Api.Features.Order.OrderDish;
 using OrderCoupon = TakeoutPlatform.Api.Features.Order.OrderCoupon;
+using MerchantOrderFulfillment = TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment;
 
 namespace TakeoutPlatform.Api.Data;
 
@@ -27,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderRider> OrderRiders => Set<OrderRider>();
     public DbSet<OrderDish> OrderDishes => Set<OrderDish>();
     public DbSet<OrderCoupon> OrderCoupons => Set<OrderCoupon>();
+    public DbSet<MerchantOrderFulfillment> MerchantOrderFulfillments => Set<MerchantOrderFulfillment>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<PlatformCoupon> PlatformCoupons => Set<PlatformCoupon>();
 
@@ -239,6 +241,24 @@ public class AppDbContext : DbContext
                 .WithOne(order => order.OrderCoupon)
                 .HasForeignKey<OrderCoupon>(orderCoupon => orderCoupon.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MerchantOrderFulfillment>(entity =>
+        {
+            entity.HasKey(item => new { item.OrderId, item.MerchantId });
+            entity.Property(item => item.Status).HasConversion<int>();
+            entity.Property(item => item.RejectionReason).HasMaxLength(500);
+            entity.HasIndex(item => item.MerchantId);
+
+            entity.HasOne(item => item.Order)
+                .WithMany(order => order.MerchantFulfillments)
+                .HasForeignKey(item => item.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Merchant>()
+                .WithMany()
+                .HasForeignKey(item => item.MerchantId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

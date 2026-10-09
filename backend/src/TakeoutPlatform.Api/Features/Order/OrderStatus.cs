@@ -12,4 +12,12 @@ public enum OrderStatus
     Paid = 1,
     Delivering = 2,
     Delivered = 3,
+    Accepted = 4,
+    Preparing = 5,
+    ReadyForDelivery = 6,
+    Assigned = 7,
+    PickedUp = 8,
+    Completed = 9,
+    Rejected = 10,
+    Cancelled = 11,
 }

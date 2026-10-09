@@ -24,4 +24,5 @@ public class Order
     public OrderRider? OrderRider { get; set; }
     public OrderCoupon? OrderCoupon { get; set; }
     public ICollection<OrderDish> OrderDishes { get; set; } = new List<OrderDish>();
+    public ICollection<MerchantOrderFulfillment> MerchantFulfillments { get; set; } = new List<MerchantOrderFulfillment>();
 }
