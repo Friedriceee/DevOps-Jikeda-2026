@@ -147,7 +147,7 @@ public class OrderEndpointTests
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         Assert.That(body?.Success, Is.False);
-        Assert.That(body?.Message, Does.Contain("库存"));
+        Assert.That(body?.Message, Does.Contain("stock"));
     }
 
     private sealed record ApiResponse<T>(bool Success, T? Data, string? Message);

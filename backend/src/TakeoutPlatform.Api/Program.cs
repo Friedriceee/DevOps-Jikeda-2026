@@ -12,6 +12,7 @@ using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.Cart;
 using TakeoutPlatform.Api.Features.User;
 using TakeoutPlatform.Api.Features.Pricing;
+using TakeoutPlatform.Api.Features.Inventory;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -78,6 +79,7 @@ builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.OrderService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.MerchantFulfillmentService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Rider.RiderDeliveryService>();
 builder.Services.AddScoped<PricingService>();
+builder.Services.AddScoped<InventoryService>();
 builder.Services.AddSingleton<IDiscountStrategy, MerchantDiscountStrategy>();
 builder.Services.AddSingleton<IDiscountStrategy, PlatformCouponDiscountStrategy>();
 

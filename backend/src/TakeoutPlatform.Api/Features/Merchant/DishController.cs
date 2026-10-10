@@ -24,7 +24,7 @@ public sealed class DishController : ControllerBase
 
         if (!result.MerchantFound)
         {
-            return NotFound(ApiResult<DishResponse>.Fail("商家不存在"));
+            return NotFound(ApiResult<DishResponse>.Fail("Merchant was not found."));
         }
 
         return CreatedAtAction(
@@ -42,7 +42,7 @@ public sealed class DishController : ControllerBase
 
         if (dishes is null)
         {
-            return NotFound(ApiResult<IReadOnlyList<DishResponse>>.Fail("商家不存在"));
+            return NotFound(ApiResult<IReadOnlyList<DishResponse>>.Fail("Merchant was not found."));
         }
 
         return Ok(ApiResult<IReadOnlyList<DishResponse>>.Ok(dishes));
@@ -62,7 +62,7 @@ public sealed class DishController : ControllerBase
             cancellationToken);
 
         return dish is null
-            ? NotFound(ApiResult<DishResponse>.Fail("菜品不存在或不属于该商家"))
+            ? NotFound(ApiResult<DishResponse>.Fail("Menu item was not found or belongs to another merchant."))
             : Ok(ApiResult<DishResponse>.Ok(dish));
     }
 
@@ -79,7 +79,7 @@ public sealed class DishController : ControllerBase
 
         if (!deleted)
         {
-            return NotFound(ApiResult<object>.Fail("菜品不存在或不属于该商家"));
+            return NotFound(ApiResult<object>.Fail("Menu item was not found, belongs to another merchant, or has reservation history. Set inventory to zero to stop new orders."));
         }
 
         return Ok(ApiResult.Ok());

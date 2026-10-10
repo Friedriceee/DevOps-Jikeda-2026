@@ -1,13 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using TakeoutPlatform.Api.Data;
+using TakeoutPlatform.Api.Features.Menu;
 
 namespace TakeoutPlatform.Api.Features.Merchant;
 
 public sealed class DishService
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _timeProvider;
 
-    public DishService(AppDbContext db) => _db = db;
+    public DishService(AppDbContext db, TimeProvider? timeProvider = null)
+    {
+        _db = db;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
 
     public async Task<(bool MerchantFound, DishResponse? Dish)> CreateAsync(
         CreateDishRequest request,
@@ -31,6 +37,7 @@ public sealed class DishService
             Inventory = request.Inventory,
         };
 
+        ApplyMenuItem(dish, MenuItemValidation.Create(request));
         _db.Dishes.Add(dish);
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -49,19 +56,12 @@ public sealed class DishService
             return null;
         }
 
-        return await _db.Dishes
+        var dishes = await _db.Dishes
             .AsNoTracking()
             .Where(dish => dish.MerchantId == merchantId)
             .OrderBy(dish => dish.Id)
-            .Select(dish => new DishResponse(
-                dish.Id,
-                dish.MerchantId,
-                dish.Name,
-                dish.Price,
-                dish.Category,
-                dish.ImageUrl,
-                dish.Inventory))
             .ToListAsync(cancellationToken);
+        return dishes.Select(ToResponse).ToList();
     }
 
     public async Task<DishResponse?> UpdateAsync(
@@ -85,6 +85,7 @@ public sealed class DishService
         dish.Category = string.IsNullOrWhiteSpace(request.Category) ? null : request.Category.Trim();
         dish.ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim();
         dish.Inventory = request.Inventory;
+        ApplyMenuItem(dish, MenuItemValidation.Create(request));
 
         await _db.SaveChangesAsync(cancellationToken);
         return ToResponse(dish);
@@ -105,17 +106,33 @@ public sealed class DishService
             return false;
         }
 
+        if (await _db.InventoryReservations.AnyAsync(
+            reservation => reservation.DishId == dishId, cancellationToken))
+            return false;
         _db.Dishes.Remove(dish);
         await _db.SaveChangesAsync(cancellationToken);
         return true;
     }
 
-    private static DishResponse ToResponse(Dish dish) => new(
+    private static void ApplyMenuItem(Dish dish, MenuItem item)
+    {
+        dish.ItemType = item.Type;
+        dish.BundleSize = item.Options.BundleSize;
+        dish.PromotionStartsAtUtc = item.Options.PromotionStartsAtUtc;
+        dish.PromotionEndsAtUtc = item.Options.PromotionEndsAtUtc;
+    }
+
+    private DishResponse ToResponse(Dish dish) => new(
         dish.Id,
         dish.MerchantId,
         dish.Name,
         dish.Price,
         dish.Category,
         dish.ImageUrl,
-        dish.Inventory);
+        dish.Inventory,
+        dish.ItemType.ToString(),
+        dish.BundleSize,
+        dish.PromotionStartsAtUtc,
+        dish.PromotionEndsAtUtc,
+        dish.Inventory > 0 && MenuItemFactory.FromDish(dish).IsAvailableAt(_timeProvider.GetUtcNow()));
 }

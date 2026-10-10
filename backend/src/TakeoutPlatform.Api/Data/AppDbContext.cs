@@ -4,6 +4,7 @@ using TakeoutPlatform.Api.Features.User;
 using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Cart;
 using TakeoutPlatform.Api.Features.Pricing;
+using TakeoutPlatform.Api.Features.Inventory;
 using Order = TakeoutPlatform.Api.Features.Order.Order;
 using OrderUser = TakeoutPlatform.Api.Features.Order.OrderUser;
 using OrderRider = TakeoutPlatform.Api.Features.Order.OrderRider;
@@ -35,6 +36,7 @@ public class AppDbContext : DbContext
     public DbSet<PlatformCoupon> PlatformCoupons => Set<PlatformCoupon>();
     public DbSet<Rider> Riders => Set<Rider>();
     public DbSet<RiderDelivery> RiderDeliveries => Set<RiderDelivery>();
+    public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +76,8 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Dish>(entity =>
         {
+            entity.Property(dish => dish.ItemType).HasConversion<string>().HasMaxLength(20);
+            entity.ToTable(table => table.HasCheckConstraint("CK_Dishes_Inventory_NonNegative", "\"Inventory\" >= 0"));
             entity.Property(dish => dish.Name)
                 .HasMaxLength(50)
                 .IsRequired();
@@ -88,6 +92,16 @@ public class AppDbContext : DbContext
                 .WithMany(merchant => merchant.Dishes)
                 .HasForeignKey(dish => dish.MerchantId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<InventoryReservation>(entity =>
+        {
+            entity.HasKey(item => new { item.OrderId, item.DishId });
+            entity.HasIndex(item => item.DishId);
+            entity.HasIndex(item => item.MerchantId);
+            entity.HasOne<Order>().WithMany().HasForeignKey(item => item.OrderId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<Dish>().WithMany().HasForeignKey(item => item.DishId).OnDelete(DeleteBehavior.Restrict);
+            entity.ToTable(table => table.HasCheckConstraint("CK_InventoryReservations_Quantity_Positive", "\"Quantity\" > 0"));
         });
 
         modelBuilder.Entity<SpecialOffer>(entity =>
