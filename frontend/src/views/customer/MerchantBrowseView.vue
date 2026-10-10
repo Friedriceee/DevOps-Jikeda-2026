@@ -23,6 +23,10 @@ function isSoldOut(dish) {
   return dish.isSoldOut === true || Number(dish.inventory ?? 0) <= 0
 }
 
+function isUnavailable(dish) {
+  return isSoldOut(dish) || dish.isAvailable === false
+}
+
 async function loadMerchants() {
   merchantsLoading.value = true
   loadError.value = ''
@@ -55,7 +59,7 @@ function showPromotion(merchant) {
 }
 
 async function handleAddToCart(dish) {
-  if (isSoldOut(dish)) return
+  if (isUnavailable(dish)) return
   addingDishId.value = dish.id
   try {
     await cart.addItem(dish)
@@ -128,14 +132,16 @@ onMounted(loadMerchants)
                 <div class="dish-title">
                   <strong>{{ dish.name }}</strong>
                   <el-tag v-if="isSoldOut(dish)" type="info" size="small">Sold out</el-tag>
+                  <el-tag v-else-if="dish.isAvailable === false" type="warning" size="small">Outside promotion</el-tag>
                 </div>
                 <span class="dish-category">{{ dish.category || 'Uncategorised' }}</span>
+                <span class="dish-category">{{ dish.itemType || 'Standard' }}{{ dish.bundleSize ? ` · ${dish.bundleSize} items per bundle` : '' }} · Stock: {{ dish.inventory }}</span>
                 <div class="dish-footer">
                   <strong class="dish-price">{{ formatYuan(dish.price) }}</strong>
                   <el-button
                     size="small"
                     type="primary"
-                    :disabled="isSoldOut(dish) || addingDishId === dish.id"
+                    :disabled="isUnavailable(dish) || addingDishId === dish.id"
                     :loading="addingDishId === dish.id"
                     @click="handleAddToCart(dish)"
                   >

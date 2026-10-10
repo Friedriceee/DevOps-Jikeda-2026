@@ -97,6 +97,21 @@ describe('MerchantBrowseView', () => {
     expect(wrapper.text()).toContain('Could not load this menu. Please try again.')
   })
 
+  it('shows bundle metadata and blocks a promotion outside its server-defined window', async () => {
+    listMerchantMenu.mockResolvedValueOnce([
+      { id: 21, name: 'Lunch Bundle', price: 20, inventory: 4, itemType: 'Bundle', bundleSize: 3, isAvailable: true },
+      { id: 22, name: 'Expired Promotion', price: 8, inventory: 4, itemType: 'Promotional', isAvailable: false },
+    ])
+    const wrapper = shallowMount(MerchantBrowseView, { global: { stubs } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('3 items per bundle')
+    expect(wrapper.text()).toContain('Outside promotion')
+    const buttons = wrapper.findAll('button').filter(button => button.text() === 'Add to cart')
+    expect(buttons[1].attributes('disabled')).toBeDefined()
+    await wrapper.vm.handleAddToCart({ id: 22, inventory: 4, isAvailable: false })
+    expect(addItem).not.toHaveBeenCalled()
+  })
+
   it('shows an empty state when there are no merchants', async () => {
     listMerchants.mockResolvedValueOnce([])
     const wrapper = shallowMount(MerchantBrowseView, { global: { stubs } })
