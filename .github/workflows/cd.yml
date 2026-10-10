@@ -1,0 +1,320 @@
+name: CD
+
+# Build, scan and publish the images, deploy them to staging, prove the release
+# works (health + end-to-end smoke) and roll back automatically if it does not.
+#
+# Triggers
+#   - after the CI workflow succeeds on main (continuous delivery to staging)
+#   - manually, to redeploy any tag, or to run a rollback drill
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Deploy an existing image tag instead of building (e.g. sha-1a2b3c4d5e6f). Leave empty to build main."
+        required: false
+        default: ""
+      rollback_drill:
+        description: "After a successful deploy, roll back to the previous release and verify it, then roll forward again."
+        type: boolean
+        default: false
+
+# One staging release at a time; never cancel a deployment half way through.
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_API: takeout-api
+  IMAGE_FRONTEND: takeout-frontend
+
+jobs:
+  # ---------------------------------------------------------------- build ----
+  build:
+    name: Build, scan and publish images
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      registry: ${{ steps.meta.outputs.registry }}
+    steps:
+      - name: Resolve what to deploy
+        id: meta
+        env:
+          INPUT_TAG: ${{ github.event.inputs.image_tag }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "registry=ghcr.io/${owner}" >> "$GITHUB_OUTPUT"
+          if [ -n "$INPUT_TAG" ]; then
+            echo "tag=${INPUT_TAG}" >> "$GITHUB_OUTPUT"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=sha-${HEAD_SHA:0:12}" >> "$GITHUB_OUTPUT"
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.meta.outputs.build == 'true'
+        with:
+          ref: ${{ steps.meta.outputs.sha }}
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.meta.outputs.build == 'true'
+
+      - uses: docker/login-action@v3
+        if: steps.meta.outputs.build == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build into the local Docker daemon first so the image can be scanned
+      # BEFORE anything is published. A failed scan means nothing reaches the registry.
+      - name: Build API image
+        if: steps.meta.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          load: true
+          tags: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_API }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build frontend image
+        if: steps.meta.outputs.build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          load: true
+          build-args: |
+            VITE_ENABLE_TEST_PAYMENT=true
+          tags: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      # Fail the release on any fixable HIGH/CRITICAL vulnerability.
+      - name: Scan API image (Trivy)
+        if: steps.meta.outputs.build == 'true'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_API }}:${{ steps.meta.outputs.tag }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+      - name: Scan frontend image (Trivy)
+        if: steps.meta.outputs.build == 'true'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.tag }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+      - name: Publish images (immutable sha tag)
+        if: steps.meta.outputs.build == 'true'
+        run: |
+          docker push "${{ steps.meta.outputs.registry }}/${{ env.IMAGE_API }}:${{ steps.meta.outputs.tag }}"
+          docker push "${{ steps.meta.outputs.registry }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.tag }}"
+
+  # --------------------------------------------------------------- deploy ----
+  deploy:
+    name: Deploy to staging, verify, roll back on failure
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ steps.target.outputs.url }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ${{ needs.build.outputs.registry }}
+      NEW_TAG: ${{ needs.build.outputs.tag }}
+      # Optional. When all three are set the release goes to your own server over SSH;
+      # otherwise a complete stack is started on this runner (ephemeral staging).
+      STAGING_HOST: ${{ secrets.STAGING_HOST }}
+      STAGING_USER: ${{ secrets.STAGING_USER }}
+      STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+      STAGING_URL: ${{ vars.STAGING_URL }}
+      STAGING_SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
+      ROLLBACK_DRILL: ${{ github.event.inputs.rollback_drill }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Choose the staging target
+        id: target
+        run: |
+          if [ -n "$STAGING_HOST" ] && [ -n "$STAGING_USER" ] && [ -n "$STAGING_SSH_KEY" ]; then
+            echo "mode=remote" >> "$GITHUB_OUTPUT"
+            echo "url=${STAGING_URL:-http://${STAGING_HOST}:8080}" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=runner" >> "$GITHUB_OUTPUT"
+            echo "url=http://localhost:8080" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Staging target: $(grep '^mode=' "$GITHUB_OUTPUT" | cut -d= -f2)"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---- what is running now? (rollback target) ----
+      - name: Find the previous release
+        id: previous
+        run: |
+          set -u
+          previous=""
+          if [ "${{ steps.target.outputs.mode }}" = "remote" ]; then
+            install -m 600 /dev/null key && printf '%s\n' "$STAGING_SSH_KEY" > key
+            mkdir -p ~/.ssh && ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+            previous="$(ssh -i key -o BatchMode=yes "$STAGING_USER@$STAGING_HOST" 'cat ~/takeout-staging/.deployed-tag 2>/dev/null || true' | tr -d '[:space:]')"
+          else
+            # Runner mode starts empty; use the registry's moving "staging" tag as the previous release.
+            if docker buildx imagetools inspect "$REGISTRY/$IMAGE_API:staging" >/dev/null 2>&1; then
+              previous="staging"
+            fi
+          fi
+          echo "tag=${previous}" >> "$GITHUB_OUTPUT"
+          echo "Previous release: ${previous:-<none: first deployment>}"
+
+      # ---- secrets for this environment ----
+      - name: Prepare environment secrets
+        id: secrets
+        run: |
+          if [ "${{ steps.target.outputs.mode }}" = "runner" ]; then
+            # Throw-away stack: generate fresh secrets for this run only.
+            pg="$(openssl rand -hex 16)"; jwt="$(openssl rand -hex 32)"; seed="Smoke-$(openssl rand -hex 8)"
+            echo "::add-mask::$pg"; echo "::add-mask::$jwt"; echo "::add-mask::$seed"
+            {
+              echo "POSTGRES_PASSWORD=$pg"
+              echo "JWT_KEY=$jwt"
+              echo "SEED_PASSWORD=$seed"
+              echo "STAGING_PORT=8080"
+            } > .env
+            echo "smoke_password=$seed" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---- deploy / verify / rollback helpers ----
+      - name: Deploy new release
+        id: deploy
+        run: |
+          deploy() {  # deploy <tag>
+            if [ "${{ steps.target.outputs.mode }}" = "remote" ]; then
+              ssh -i key -o BatchMode=yes "$STAGING_USER@$STAGING_HOST" 'mkdir -p ~/takeout-staging/scripts/deploy'
+              scp -i key -o BatchMode=yes docker-compose.staging.yml "$STAGING_USER@$STAGING_HOST:~/takeout-staging/"
+              scp -i key -o BatchMode=yes scripts/deploy/deploy.sh "$STAGING_USER@$STAGING_HOST:~/takeout-staging/scripts/deploy/"
+              ssh -i key -o BatchMode=yes "$STAGING_USER@$STAGING_HOST" \
+                "cd ~/takeout-staging && IMAGE_TAG='$1' REGISTRY='$REGISTRY' bash scripts/deploy/deploy.sh"
+            else
+              IMAGE_TAG="$1" bash scripts/deploy/deploy.sh
+            fi
+          }
+          declare -f deploy > deploy_fn.sh
+          deploy "$NEW_TAG"
+
+      - name: Health check
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS "${{ steps.target.outputs.url }}/healthz" >/dev/null \
+               && curl -fsS "${{ steps.target.outputs.url }}/api/health" | grep -q '"status":"ok"'; then
+              echo "Healthy after ${attempt} attempt(s)"; exit 0
+            fi
+            sleep 4
+          done
+          echo "::error::Staging did not become healthy"; exit 1
+
+      - name: Smoke test (checkout to delivery, one order)
+        env:
+          BASE_URL: ${{ steps.target.outputs.url }}
+          SMOKE_PASSWORD: ${{ steps.secrets.outputs.smoke_password || secrets.STAGING_SMOKE_PASSWORD }}
+        run: node scripts/smoke/staging-smoke.mjs
+
+      # ---- the release is good: promote the moving tags ----
+      - name: Keep the previous release tag and promote the new one
+        if: success()
+        run: |
+          prev="${{ steps.previous.outputs.tag }}"
+          for image in "$IMAGE_API" "$IMAGE_FRONTEND"; do
+            if [ -n "$prev" ] && [ "$prev" != "staging" ]; then
+              docker buildx imagetools create -t "$REGISTRY/$image:staging-previous" "$REGISTRY/$image:$prev"
+            elif docker buildx imagetools inspect "$REGISTRY/$image:staging" >/dev/null 2>&1; then
+              docker buildx imagetools create -t "$REGISTRY/$image:staging-previous" "$REGISTRY/$image:staging"
+            fi
+            docker buildx imagetools create -t "$REGISTRY/$image:staging" "$REGISTRY/$image:$NEW_TAG"
+          done
+          echo "staging -> $NEW_TAG   staging-previous -> ${prev:-<none>}"
+
+      # ---- optional rollback drill ----
+      - name: Rollback drill (roll back, verify, roll forward)
+        if: success() && env.ROLLBACK_DRILL == 'true' && steps.previous.outputs.tag != ''
+        env:
+          BASE_URL: ${{ steps.target.outputs.url }}
+          SMOKE_PASSWORD: ${{ steps.secrets.outputs.smoke_password || secrets.STAGING_SMOKE_PASSWORD }}
+        run: |
+          source deploy_fn.sh
+          prev="${{ steps.previous.outputs.tag }}"
+          [ "$prev" = "staging" ] && prev="staging-previous"
+          echo "::group::Roll back to $prev"
+          deploy "$prev"
+          curl -fsS "$BASE_URL/api/health" | grep -q '"status":"ok"'
+          node scripts/smoke/staging-smoke.mjs
+          echo "::endgroup::"
+          echo "Rollback to $prev verified; rolling forward again to $NEW_TAG"
+          deploy "$NEW_TAG"
+          curl -fsS "$BASE_URL/api/health" | grep -q '"status":"ok"'
+
+      # ---- the release is bad: put the previous one back ----
+      - name: Roll back to the previous release
+        if: failure() && steps.deploy.outcome != 'skipped' && steps.previous.outputs.tag != ''
+        run: |
+          source deploy_fn.sh
+          prev="${{ steps.previous.outputs.tag }}"
+          echo "::warning::Release $NEW_TAG failed verification; restoring $prev"
+          if deploy "$prev"; then
+            curl -fsS "${{ steps.target.outputs.url }}/api/health" | grep -q '"status":"ok"' \
+              && echo "Rollback to $prev succeeded; staging is healthy again."
+          else
+            echo "::error::Rollback to $prev failed too. Staging needs manual attention."
+          fi
+          exit 1
+
+      - name: Collect logs on failure
+        if: failure() && steps.target.outputs.mode == 'runner'
+        run: docker compose -f docker-compose.staging.yml logs --no-color --tail=200 || true
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Staging deployment"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Target | ${{ steps.target.outputs.mode }} (${{ steps.target.outputs.url }}) |"
+            echo "| Released tag | \`$NEW_TAG\` |"
+            echo "| Previous tag | \`${{ steps.previous.outputs.tag }}\` |"
+            echo "| Result | ${{ job.status }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

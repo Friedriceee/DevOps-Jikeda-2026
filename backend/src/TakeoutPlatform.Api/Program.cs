@@ -11,6 +11,7 @@ using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.Cart;
 using TakeoutPlatform.Api.Features.Checkout;
+using TakeoutPlatform.Api.Features.Seed;
 using TakeoutPlatform.Api.Features.User;
 using TakeoutPlatform.Api.Features.Pricing;
 using TakeoutPlatform.Api.Features.Inventory;
@@ -80,6 +81,7 @@ builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.OrderService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.MerchantFulfillmentService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Rider.RiderDeliveryService>();
 builder.Services.AddScoped<PricingService>();
+builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
 builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(PaymentOptions.SectionName));
 builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
 builder.Services.AddScoped<CheckoutService>();
@@ -95,6 +97,16 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod()));
 
 var app = builder.Build();
+
+// Containerised environments start from an empty database. Both steps are opt-in
+// through configuration (Database__MigrateOnStartup, Seed__Enabled) so local runs,
+// tests and any production setup keep full control.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var migrationScope = app.Services.CreateScope();
+    await migrationScope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+await StagingSeeder.RunAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {
