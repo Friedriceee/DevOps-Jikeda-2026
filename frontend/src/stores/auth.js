@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', () => {
   function setSession(session) {
     const accessToken = session?.accessToken ?? session?.token
     if (!accessToken) {
-      throw new Error('登录响应缺少 accessToken')
+      throw new Error('The sign-in response did not include an access token.')
     }
 
     token.value = accessToken
