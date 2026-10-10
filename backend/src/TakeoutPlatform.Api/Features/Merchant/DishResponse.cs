@@ -7,4 +7,9 @@ public sealed record DishResponse(
     decimal Price,
     string? Category,
     string? ImageUrl,
-    int Inventory);
+    int Inventory,
+    string ItemType = "Standard",
+    int? BundleSize = null,
+    DateTimeOffset? PromotionStartsAtUtc = null,
+    DateTimeOffset? PromotionEndsAtUtc = null,
+    bool IsAvailable = true);

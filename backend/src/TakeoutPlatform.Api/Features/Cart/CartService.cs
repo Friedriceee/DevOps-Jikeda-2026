@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using TakeoutPlatform.Api.Data;
 using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.Pricing;
+using TakeoutPlatform.Api.Features.Menu;
 
 namespace TakeoutPlatform.Api.Features.Cart;
 
@@ -12,6 +13,7 @@ public enum CartWriteOutcome
     DishNotFound,
     CartItemNotFound,
     InsufficientStock,
+    Unavailable,
 }
 
 public sealed record CartWriteResult(
@@ -28,10 +30,12 @@ public sealed class CartService
 {
     private readonly AppDbContext _db;
     private readonly IDiscountStrategy _merchantDiscountStrategy;
+    private readonly TimeProvider _timeProvider;
 
-    public CartService(AppDbContext db, IEnumerable<IDiscountStrategy>? strategies = null)
+    public CartService(AppDbContext db, IEnumerable<IDiscountStrategy>? strategies = null, TimeProvider? timeProvider = null)
     {
         _db = db;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _merchantDiscountStrategy = strategies?
             .SingleOrDefault(strategy => strategy.Kind == DiscountStrategyKind.MerchantOffer)
             ?? new MerchantDiscountStrategy();
@@ -59,6 +63,8 @@ public sealed class CartService
         {
             return new CartWriteResult(CartWriteOutcome.DishNotFound, null, "菜品不存在");
         }
+        if (!MenuItemFactory.FromDish(dish).IsAvailableAt(_timeProvider.GetUtcNow()))
+            return new(CartWriteOutcome.Unavailable, null, "This promotional item is not currently available.");
 
         var cartItem = await _db.CartItems.SingleOrDefaultAsync(
             item => item.UserId == userId && item.DishId == request.DishId,
@@ -110,6 +116,8 @@ public sealed class CartService
             return new CartWriteResult(CartWriteOutcome.CartItemNotFound, null, "购物车商品不存在");
         }
 
+        if (!MenuItemFactory.FromDish(cartItem.Dish).IsAvailableAt(_timeProvider.GetUtcNow()))
+            return new(CartWriteOutcome.Unavailable, null, "This promotional item is not currently available.");
         if (request.DishNum > cartItem.Dish.Inventory)
         {
             return new CartWriteResult(

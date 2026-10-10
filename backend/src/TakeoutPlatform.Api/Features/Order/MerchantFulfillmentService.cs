@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using TakeoutPlatform.Api.Data;
+using TakeoutPlatform.Api.Features.Inventory;
 
 namespace TakeoutPlatform.Api.Features.Order;
 
@@ -22,11 +23,13 @@ public sealed class MerchantFulfillmentService
 {
     private readonly AppDbContext _db;
     private readonly TimeProvider _timeProvider;
+    private readonly InventoryService _inventory;
 
-    public MerchantFulfillmentService(AppDbContext db, TimeProvider timeProvider)
+    public MerchantFulfillmentService(AppDbContext db, TimeProvider timeProvider, InventoryService? inventory = null)
     {
         _db = db;
         _timeProvider = timeProvider;
+        _inventory = inventory ?? new InventoryService(db, timeProvider);
     }
 
     public async Task<IReadOnlyList<MerchantOrderResponse>> ListAsync(
@@ -156,15 +159,22 @@ public sealed class MerchantFulfillmentService
             fulfillment.RejectionReason = request.Reason!.Trim();
             if (!fulfillment.InventoryRestored)
             {
-                var dishIds = merchantItems.Select(item => item.DishId).ToArray();
-                var dishes = await _db.Dishes
-                    .Where(dish => dish.MerchantId == merchantId && dishIds.Contains(dish.Id))
-                    .ToDictionaryAsync(dish => dish.Id, cancellationToken);
-
-                foreach (var item in merchantItems)
+                var release = await _inventory.ReleaseAsync(orderId, merchantId, cancellationToken);
+                if (!release.Succeeded && release.Outcome != InventoryOutcome.ReservationNotFound)
+                    return new(MerchantTransitionOutcome.InvalidRequest, null, release.Message);
+                // Old orders have no reservation ledger; retain their existing restoration path.
+                if (release.Outcome == InventoryOutcome.ReservationNotFound)
                 {
-                    if (dishes.TryGetValue(item.DishId, out var dish))
-                        dish.Inventory += item.DishNum;
+                    var dishIds = merchantItems.Select(item => item.DishId).ToArray();
+                    var dishes = await _db.Dishes
+                        .Where(dish => dish.MerchantId == merchantId && dishIds.Contains(dish.Id))
+                        .ToDictionaryAsync(dish => dish.Id, cancellationToken);
+
+                    foreach (var item in merchantItems)
+                    {
+                        if (dishes.TryGetValue(item.DishId, out var dish))
+                            dish.Inventory += item.DishNum;
+                    }
                 }
 
                 fulfillment.InventoryRestored = true;

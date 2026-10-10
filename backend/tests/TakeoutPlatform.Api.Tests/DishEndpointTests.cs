@@ -210,7 +210,7 @@ public class DishEndpointTests
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
         Assert.That(body?.Success, Is.False);
-        Assert.That(body?.Message, Does.Contain("name"));
+        Assert.That(body?.Message, Does.Contain("Name"));
     }
 
     [TestCase(0)]
@@ -244,7 +244,7 @@ public class DishEndpointTests
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
         Assert.That(body?.Success, Is.False);
-        Assert.That(body?.Message, Is.EqualTo("商家不存在"));
+        Assert.That(body?.Message, Is.EqualTo("Merchant was not found."));
     }
 
     private sealed record ApiResponse<T>(bool Success, T? Data, string? Message);

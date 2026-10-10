@@ -99,6 +99,41 @@ namespace TakeoutPlatform.Api.Migrations
                     b.ToTable("CartItems");
                 });
 
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Inventory.InventoryReservation", b =>
+                {
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DishId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsReleased")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MerchantId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("ReleasedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ReservedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("OrderId", "DishId");
+
+                    b.HasIndex("DishId");
+
+                    b.HasIndex("MerchantId");
+
+                    b.ToTable("InventoryReservations", t =>
+                        {
+                            t.HasCheckConstraint("CK_InventoryReservations_Quantity_Positive", "\"Quantity\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.Dish", b =>
                 {
                     b.Property<int>("Id")
@@ -106,6 +141,9 @@ namespace TakeoutPlatform.Api.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BundleSize")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Category")
                         .HasMaxLength(20)
@@ -117,6 +155,11 @@ namespace TakeoutPlatform.Api.Migrations
 
                     b.Property<int>("Inventory")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ItemType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<int>("MerchantId")
                         .HasColumnType("integer");
@@ -130,11 +173,20 @@ namespace TakeoutPlatform.Api.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<DateTimeOffset?>("PromotionEndsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("PromotionStartsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MerchantId");
 
-                    b.ToTable("Dishes");
+                    b.ToTable("Dishes", t =>
+                        {
+                            t.HasCheckConstraint("CK_Dishes_Inventory_NonNegative", "\"Inventory\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.Merchant", b =>
@@ -633,6 +685,21 @@ namespace TakeoutPlatform.Api.Migrations
                     b.Navigation("Dish");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Inventory.InventoryReservation", b =>
+                {
+                    b.HasOne("TakeoutPlatform.Api.Features.Merchant.Dish", null)
+                        .WithMany()
+                        .HasForeignKey("DishId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TakeoutPlatform.Api.Features.Order.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Merchant.Dish", b =>

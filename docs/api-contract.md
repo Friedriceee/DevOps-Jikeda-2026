@@ -1,5 +1,33 @@
 # 接口契约
 
+## Sprint 3 — Member 3: Menu Factory and inventory
+
+The existing merchant dish endpoints retain their URLs and authorization rules.
+POST/PUT now accept `itemType` (`Standard`, `Bundle`, `Promotional`; default `Standard`),
+`bundleSize` (Bundle only, integer >= 2), and `promotionStartsAtUtc` / `promotionEndsAtUtc`
+(Promotional only, ISO 8601 instants with start < end). Inapplicable settings are rejected
+with an English `400` message. Existing dishes migrate to `Standard` without changing stock.
+Responses include these fields plus `isAvailable`: stock > 0 and, for promotions,
+start <= server UTC time < end. A bundle reserves one unit per complete bundle;
+component-level recipe inventory is not implemented in this sprint.
+
+Cart add/update rejects a promotional item outside its availability window with `400`.
+Order creation reserves stock atomically inside the existing order transaction;
+missing dishes return `404`, unavailable/insufficient stock or invalid quantities return `400`.
+All item reservations roll back if any item fails. Repeated identical internal reservation
+calls for one order do not deduct again; a changed/released reservation is rejected.
+This is inventory-level idempotency, **not** payment or order-creation idempotency.
+Pending-order cancellation releases the whole reservation; merchant rejection releases
+only that merchant's items. Repeated releases do not restore twice. Pre-migration orders
+without a ledger retain the existing restoration path. Orders' existing hard-deletion
+behavior on cancellation is unchanged and cascades their reservation rows.
+
+The reservation ledger is internal, not a new public API. Database constraints prohibit
+negative dish inventory and non-positive reservation quantities. A dish with retained
+reservation history cannot be hard-deleted (`404` with an English explanation);
+merchants can set inventory to zero to stop new purchases. This does not introduce a
+soft-delisting feature or change other members' fulfilment states or pricing rules.
+
 前后端并行开发的唯一依据。改接口先改这个文件，并在 PR 里说明。
 
 ## 通用响应格式

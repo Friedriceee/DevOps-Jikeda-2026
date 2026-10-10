@@ -2,11 +2,15 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useMerchantStore } from '@/stores/merchant'
+import { useAuthStore } from '@/stores/auth'
 import { createDish, deleteDish, listDishes, updateDish } from '@/api/merchant'
-import { buildDishPayload, buildDishUpdatePayload, isValidDishName, isValidInventory } from '@/utils/dish'
+import { buildDishPayload, buildDishUpdatePayload, isValidDishName, isValidInventory, menuSettingsError, promotionInput } from '@/utils/dish'
 import { formatYuan, isValidPrice } from '@/utils/money'
 
 const merchantStore = useMerchantStore()
+const auth = useAuthStore()
+// Use the signed-in merchant instead of the original Sprint 1 demo id.
+if (auth.role === 'Merchant' && auth.user?.profileId) merchantStore.setMerchantId(auth.user.profileId)
 const formRef = ref()
 const dishes = ref([])
 const loading = ref(false)
@@ -19,6 +23,10 @@ const form = reactive({
   category: '',
   imageUrl: '',
   inventory: 0,
+  itemType: 'Standard',
+  bundleSize: 2,
+  promotionStartsAtUtc: '',
+  promotionEndsAtUtc: '',
 })
 
 const rules = {
@@ -79,6 +87,10 @@ function resetForm() {
   form.category = ''
   form.imageUrl = ''
   form.inventory = 0
+  form.itemType = 'Standard'
+  form.bundleSize = 2
+  form.promotionStartsAtUtc = ''
+  form.promotionEndsAtUtc = ''
   formRef.value?.clearValidate()
 }
 
@@ -89,6 +101,10 @@ function startEdit(dish) {
   form.category = dish.category ?? ''
   form.imageUrl = dish.imageUrl ?? ''
   form.inventory = dish.inventory
+  form.itemType = dish.itemType || 'Standard'
+  form.bundleSize = dish.bundleSize ?? 2
+  form.promotionStartsAtUtc = promotionInput(dish.promotionStartsAtUtc)
+  form.promotionEndsAtUtc = promotionInput(dish.promotionEndsAtUtc)
   formRef.value?.clearValidate()
 }
 
@@ -100,6 +116,11 @@ function cancelEdit() {
 async function submit() {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  const settingsError = menuSettingsError(form)
+  if (settingsError) {
+    ElMessage.error(settingsError)
+    return
+  }
 
   submitting.value = true
   try {
@@ -167,10 +188,27 @@ onMounted(loadDishes)
           <el-form-item label="Inventory" prop="inventory">
             <el-input-number v-model="form.inventory" :min="0" :step="1" controls-position="right" />
           </el-form-item>
+          <el-form-item label="Item Type">
+            <select v-model="form.itemType" aria-label="Item Type" class="menu-input">
+              <option>Standard</option><option>Bundle</option><option>Promotional</option>
+            </select>
+          </el-form-item>
+          <el-form-item v-if="form.itemType === 'Bundle'" label="Bundle Size">
+            <input v-model="form.bundleSize" aria-label="Bundle Size" class="menu-input" type="number" min="2" step="1">
+          </el-form-item>
+          <template v-if="form.itemType === 'Promotional'">
+            <el-form-item label="Promotion Starts (UTC)">
+              <input v-model="form.promotionStartsAtUtc" aria-label="Promotion Starts (UTC)" class="menu-input" placeholder="2026-10-10T00:00" />
+            </el-form-item>
+            <el-form-item label="Promotion Ends (UTC)">
+              <input v-model="form.promotionEndsAtUtc" aria-label="Promotion Ends (UTC)" class="menu-input" placeholder="2026-10-11T00:00" />
+            </el-form-item>
+          </template>
           <el-form-item class="wide-item" label="Image URL" prop="imageUrl">
             <el-input v-model="form.imageUrl" placeholder="Optional http/https URL" />
           </el-form-item>
         </div>
+        <p class="inventory-help">One inventory unit is one dish or one complete bundle. Promotion times use UTC (YYYY-MM-DDTHH:mm).</p>
         <el-button type="primary" :loading="submitting" @click="submit">
           {{ editingDishId ? 'Save Changes' : 'Create Dish' }}
         </el-button>
@@ -182,18 +220,22 @@ onMounted(loadDishes)
       <template #header>Dish List</template>
       <el-table v-loading="loading" :data="dishes" stripe>
         <el-table-column prop="name" label="Name" min-width="180" />
-        <el-table-column label="Price" width="130">
+        <el-table-column label="Price" width="100">
           <template #default="scope">{{ formatYuan(scope.row.price) }}</template>
         </el-table-column>
-        <el-table-column prop="category" label="Category" width="160" />
-        <el-table-column prop="inventory" label="Inventory" width="120" />
-        <el-table-column label="Image" min-width="220">
+        <el-table-column prop="category" label="Category" width="110" />
+        <el-table-column prop="itemType" label="Type" width="110" />
+        <el-table-column prop="inventory" label="Inventory" width="100" />
+        <el-table-column label="Availability" width="140">
+          <template #default="scope">{{ scope.row.isAvailable ? 'Available' : Number(scope.row.inventory) <= 0 ? 'Sold out' : 'Outside promotion' }}</template>
+        </el-table-column>
+        <el-table-column label="Image" min-width="100">
           <template #default="scope">
             <a v-if="scope.row.imageUrl" :href="scope.row.imageUrl" target="_blank" rel="noreferrer">Open image</a>
             <span v-else>—</span>
           </template>
         </el-table-column>
-        <el-table-column label="Actions" width="180" fixed="right">
+        <el-table-column label="Actions" width="150" fixed="right">
           <template #default="scope">
             <el-button link type="primary" @click="startEdit(scope.row)">Edit</el-button>
             <el-button link type="danger" @click="removeDish(scope.row)">Delist</el-button>
@@ -213,5 +255,7 @@ onMounted(loadDishes)
 .form-card { margin-bottom: 18px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
 .wide-item { grid-column: 1 / -1; }
+.menu-input { box-sizing: border-box; width: 100%; min-height: 32px; border: 1px solid #dcdfe6; border-radius: 4px; padding: 4px 10px; background: white; color: #303133; font: inherit; }
+.inventory-help { font-size: 13px; color: #606266; }
 @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } .wide-item { grid-column: auto; } }
 </style>

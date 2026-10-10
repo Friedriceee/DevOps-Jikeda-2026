@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TakeoutPlatform.Api.Data;
+using TakeoutPlatform.Api.Features.Inventory;
 
 namespace TakeoutPlatform.Api.Features.Order;
 
@@ -12,6 +13,8 @@ public enum CreateOrderOutcome
     EmptyCart,          // 购物车为空
     DishNotFound,       // 某个菜品不存在
     InsufficientStock,  // 某个菜品库存不足
+    InvalidInventoryRequest,
+    Unavailable,
 }
 
 /// <summary>
@@ -45,8 +48,13 @@ public sealed record CancelOrderResult(
 public sealed class OrderService
 {
     private readonly AppDbContext _db;
+    private readonly InventoryService _inventory;
 
-    public OrderService(AppDbContext db) => _db = db;
+    public OrderService(AppDbContext db, InventoryService? inventory = null)
+    {
+        _db = db;
+        _inventory = inventory ?? new InventoryService(db, TimeProvider.System);
+    }
 
     /// <summary>
     /// 创建待支付订单（Order Builder）。整个过程在一个事务里完成：
@@ -109,38 +117,29 @@ public sealed class OrderService
                 RiderPrice = request.RiderPrice,
             });
 
-            // 逐项处理购物车：校验菜品存在、库存充足，然后扣减库存并生成明细。
-            foreach (var item in request.ShoppingCart)
+            var reservation = await _inventory.ReserveAsync(order.Id, request.ShoppingCart
+                .Select(item => new InventoryReservationItem(item.MerchantId, item.DishId, item.DishNum))
+                .ToArray(), cancellationToken);
+            if (!reservation.Succeeded)
             {
-                var dish = await _db.Dishes
-                    .FirstOrDefaultAsync(d => d.Id == item.DishId && d.MerchantId == item.MerchantId, cancellationToken);
-
-                if (dish is null)
+                await transaction.RollbackAsync(cancellationToken);
+                var outcome = reservation.Outcome switch
                 {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return new CreateOrderResult(
-                        CreateOrderOutcome.DishNotFound,
-                        null,
-                        $"菜品 {item.DishId} 未找到");
-                }
-
-                if (dish.Inventory < item.DishNum)
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                    return new CreateOrderResult(
-                        CreateOrderOutcome.InsufficientStock,
-                        null,
-                        $"菜品 {dish.Name} 库存仅余 {dish.Inventory}");
-                }
-
-                dish.Inventory -= item.DishNum;
-
+                    InventoryOutcome.DishNotFound => CreateOrderOutcome.DishNotFound,
+                    InventoryOutcome.InsufficientStock => CreateOrderOutcome.InsufficientStock,
+                    InventoryOutcome.Unavailable => CreateOrderOutcome.Unavailable,
+                    _ => CreateOrderOutcome.InvalidInventoryRequest,
+                };
+                return new(outcome, null, reservation.Message);
+            }
+            foreach (var group in request.ShoppingCart.GroupBy(item => new { item.MerchantId, item.DishId }))
+            {
                 _db.OrderDishes.Add(new OrderDish
                 {
                     OrderId = order.Id,
-                    MerchantId = item.MerchantId,
-                    DishId = item.DishId,
-                    DishNum = item.DishNum,
+                    MerchantId = group.Key.MerchantId,
+                    DishId = group.Key.DishId,
+                    DishNum = group.Sum(item => item.DishNum),
                 });
             }
 
@@ -220,20 +219,26 @@ public sealed class OrderService
                     "只能取消待支付订单");
             }
 
-            // 恢复库存（参照旧 deleteOrder）。
-            var orderDishes = await _db.OrderDishes
-                .Where(orderDish => orderDish.OrderId == orderId)
-                .ToListAsync(cancellationToken);
-
-            foreach (var orderDish in orderDishes)
+            var release = await _inventory.ReleaseAsync(orderId, null, cancellationToken);
+            if (!release.Succeeded && release.Outcome != InventoryOutcome.ReservationNotFound)
+                return new(CancelOrderOutcome.NotCancellable, release.Message);
+            // Compatibility for orders created before the reservation ledger existed.
+            if (release.Outcome == InventoryOutcome.ReservationNotFound)
             {
-                var dish = await _db.Dishes
-                    .FirstOrDefaultAsync(
-                        d => d.Id == orderDish.DishId && d.MerchantId == orderDish.MerchantId,
-                        cancellationToken);
-                if (dish is not null)
+                var orderDishes = await _db.OrderDishes
+                    .Where(orderDish => orderDish.OrderId == orderId)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var orderDish in orderDishes)
                 {
-                    dish.Inventory += orderDish.DishNum;
+                    var dish = await _db.Dishes
+                        .FirstOrDefaultAsync(
+                            d => d.Id == orderDish.DishId && d.MerchantId == orderDish.MerchantId,
+                            cancellationToken);
+                    if (dish is not null)
+                    {
+                        dish.Inventory += orderDish.DishNum;
+                    }
                 }
             }
 
