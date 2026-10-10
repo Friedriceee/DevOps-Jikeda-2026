@@ -3,28 +3,28 @@
  * 与后端 DeliveryStatus（Assigned/PickedUp/Delivering/Completed）对应。
  */
 
-// 后端 RiderDeliveryResponse.Status 是枚举 ToString()
+// Backend RiderDeliveryResponse.Status is the enum ToString()
 const STATUS_TEXT = {
-  Assigned: '已接单',
-  PickedUp: '已取餐',
-  Delivering: '配送中',
-  Completed: '已完成',
+  Assigned: 'Assigned',
+  PickedUp: 'Picked up',
+  Delivering: 'Out for delivery',
+  Completed: 'Completed',
 }
 
-// 当前状态 → 下一步可执行的动作（给后端 advance 用）与按钮文案
+// Current status -> next executable action (for the backend advance call) + button label
 const NEXT_ACTION = {
-  Assigned: { action: 'PickUp', label: '确认取餐' },
-  PickedUp: { action: 'StartDelivering', label: '开始配送' },
-  Delivering: { action: 'Complete', label: '确认送达' },
+  Assigned: { action: 'PickUp', label: 'Confirm pickup' },
+  PickedUp: { action: 'StartDelivering', label: 'Start delivery' },
+  Delivering: { action: 'Complete', label: 'Mark delivered' },
 }
 
 /**
- * 配送状态文案。
+ * Delivery status display label.
  * @param {string} status
  * @returns {string}
  */
 export function deliveryStatusText(status) {
-  return STATUS_TEXT[status] ?? '未知状态'
+  return STATUS_TEXT[status] ?? 'Unknown status'
 }
 
 /**

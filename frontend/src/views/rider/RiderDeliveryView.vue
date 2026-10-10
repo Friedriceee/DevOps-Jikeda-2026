@@ -40,10 +40,10 @@ async function refresh() {
 async function accept(order) {
   try {
     await acceptDelivery(order.orderId)
-    ElMessage.success('接单成功')
+    ElMessage.success('Order accepted')
     await refresh()
   } catch (error) {
-    if (!error?.userNotified) ElMessage.error('接单失败')
+    if (!error?.userNotified) ElMessage.error('Failed to accept the order')
   }
 }
 
@@ -52,10 +52,10 @@ async function advance(delivery) {
   if (!next) return
   try {
     await advanceDelivery(delivery.orderId, next.action)
-    ElMessage.success(`${next.label}成功`)
+    ElMessage.success('Delivery status updated')
     await loadMine()
   } catch (error) {
-    if (!error?.userNotified) ElMessage.error('操作失败')
+    if (!error?.userNotified) ElMessage.error('Operation failed')
   }
 }
 
@@ -66,43 +66,43 @@ onMounted(refresh)
   <section class="rider-page">
     <div class="page-heading">
       <div>
-        <h1>骑手配送</h1>
-        <p>接单并更新配送状态</p>
+        <h1>Rider Delivery</h1>
+        <p>Accept orders and update delivery status</p>
       </div>
-      <el-button :loading="loadingAvailable || loadingMine" @click="refresh">刷新</el-button>
+      <el-button :loading="loadingAvailable || loadingMine" @click="refresh">Refresh</el-button>
     </div>
 
     <el-card class="section-card" shadow="never">
-      <template #header>可接任务</template>
+      <template #header>Available Tasks</template>
       <el-table v-loading="loadingAvailable" :data="available" stripe>
-        <el-table-column prop="orderId" label="订单号" width="100" />
-        <el-table-column prop="zone" label="区域" width="120" />
-        <el-table-column label="金额" width="120">
+        <el-table-column prop="orderId" label="Order #" width="100" />
+        <el-table-column prop="zone" label="Zone" width="120" />
+        <el-table-column label="Amount" width="120">
           <template #default="scope">{{ formatYuan(scope.row.price) }}</template>
         </el-table-column>
-        <el-table-column prop="deliveryAddress" label="配送地址" min-width="200" />
-        <el-table-column prop="contactName" label="联系人" width="120" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column prop="deliveryAddress" label="Delivery Address" min-width="200" />
+        <el-table-column prop="contactName" label="Contact" width="120" />
+        <el-table-column label="Action" width="120" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" @click="accept(scope.row)">接单</el-button>
+            <el-button link type="primary" @click="accept(scope.row)">Accept</el-button>
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!loadingAvailable && available.length === 0" description="暂无可接任务" />
+      <el-empty v-if="!loadingAvailable && available.length === 0" description="No available tasks" />
     </el-card>
 
     <el-card class="section-card" shadow="never">
-      <template #header>我的配送</template>
+      <template #header>My Deliveries</template>
       <el-table v-loading="loadingMine" :data="myDeliveries" stripe>
-        <el-table-column prop="orderId" label="订单号" width="100" />
-        <el-table-column label="状态" width="120">
+        <el-table-column prop="orderId" label="Order #" width="100" />
+        <el-table-column label="Status" width="140">
           <template #default="scope">{{ deliveryStatusText(scope.row.status) }}</template>
         </el-table-column>
-        <el-table-column label="金额" width="120">
+        <el-table-column label="Amount" width="120">
           <template #default="scope">{{ formatYuan(scope.row.price) }}</template>
         </el-table-column>
-        <el-table-column prop="deliveryAddress" label="配送地址" min-width="200" />
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column prop="deliveryAddress" label="Delivery Address" min-width="200" />
+        <el-table-column label="Action" width="160" fixed="right">
           <template #default="scope">
             <el-button
               v-if="canAdvance(scope.row.status)"
@@ -116,7 +116,7 @@ onMounted(refresh)
           </template>
         </el-table-column>
       </el-table>
-      <el-empty v-if="!loadingMine && myDeliveries.length === 0" description="暂无配送任务" />
+      <el-empty v-if="!loadingMine && myDeliveries.length === 0" description="No deliveries yet" />
     </el-card>
   </section>
 </template>
