@@ -1,0 +1,76 @@
+@startuml
+!pragma layout smetana
+title Sprint 3 — Member 3: Menu Factory and Inventory
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam classBackgroundColor #F3F8FD
+left to right direction
+abstract class MenuItemFactory {
+  +Create(options): MenuItem
+  #CreateItem(options): MenuItem
+}
+class StandardMenuItemFactory
+class BundleMenuItemFactory
+class PromotionalMenuItemFactory
+abstract class MenuItem {
+  +Type: MenuItemType
+  +Options: MenuItemOptions
+  +IsAvailableAt(now): bool
+}
+class StandardMenuItem
+class BundleMenuItem {
+  +Size: int
+}
+class PromotionalMenuItem {
+  +StartsAtUtc: DateTimeOffset
+  +EndsAtUtc: DateTimeOffset
+}
+class DishService {
+  +CreateAsync(request)
+  +UpdateAsync(request)
+  +ListAsync(merchantId)
+}
+class Dish {
+  +ItemType
+  +BundleSize
+  +PromotionStartsAtUtc
+  +PromotionEndsAtUtc
+  +Inventory: int
+}
+class InventoryService {
+  +ReserveAsync(orderId, items)
+  +ReleaseAsync(orderId, merchantId?)
+}
+class InventoryReservation {
+  +OrderId, DishId: composite key
+  +MerchantId, Quantity
+  +IsReleased
+  +ReservedAtUtc, ReleasedAtUtc
+}
+MenuItemFactory <|-- StandardMenuItemFactory
+MenuItemFactory <|-- BundleMenuItemFactory
+MenuItemFactory <|-- PromotionalMenuItemFactory
+MenuItem <|-- StandardMenuItem
+MenuItem <|-- BundleMenuItem
+MenuItem <|-- PromotionalMenuItem
+StandardMenuItemFactory ..> StandardMenuItem : creates
+BundleMenuItemFactory ..> BundleMenuItem : creates
+PromotionalMenuItemFactory ..> PromotionalMenuItem : creates
+DishService ..> MenuItemFactory : delegates creation
+DishService --> Dish : persists metadata
+InventoryService ..> MenuItemFactory : availability check
+InventoryService --> Dish : conditional SQL stock update
+InventoryService --> InventoryReservation : records / claims release
+note bottom of BundleMenuItem
+  1 stock unit = 1 complete bundle
+end note
+note bottom of InventoryReservation
+  Unique (OrderId, DishId)
+  Claim IsReleased before restoring
+  All changes share one transaction
+end note
+note bottom of PromotionalMenuItem
+  start <= UTC now < end
+end note
+@enduml
