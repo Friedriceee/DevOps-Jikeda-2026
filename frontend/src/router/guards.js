@@ -1,8 +1,8 @@
 export function authGuard(authStore, to) {
   if (to.name === 'login' && authStore.isAuthenticated) {
-    return authStore.role === 'Merchant'
-      ? { name: 'merchant-dishes' }
-      : { name: 'customer-merchants' }
+    if (authStore.role === 'Merchant') return { name: 'merchant-dishes' }
+    if (authStore.role === 'Rider') return { name: 'rider-deliveries' }
+    return { name: 'customer-merchants' }
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
@@ -23,5 +23,7 @@ export function postLoginDestination(redirect, role) {
   if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
     return redirect
   }
-  return role === 'Merchant' ? '/merchant/dishes' : '/customer/merchants'
+  if (role === 'Merchant') return '/merchant/dishes'
+  if (role === 'Rider') return '/rider/deliveries'
+  return '/customer/merchants'
 }

@@ -12,6 +12,12 @@ describe('application route access rules', () => {
     expect(merchantRoute.meta).toEqual({ requiresAuth: true, role: 'Merchant' })
   })
 
+  it('protects merchant order fulfilment with the Merchant role', () => {
+    const merchantOrders = routes.find((route) => route.name === 'merchant-orders')
+    expect(merchantOrders.path).toBe('/merchant/orders')
+    expect(merchantOrders.meta).toEqual({ requiresAuth: true, role: 'Merchant' })
+  })
+
   it('keeps merchant and menu browsing public', () => {
     const customerRoute = routes.find((route) => route.name === 'customer-merchants')
     expect(customerRoute.meta.requiresAuth).toBe(false)

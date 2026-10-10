@@ -297,6 +297,34 @@ namespace TakeoutPlatform.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment", b =>
+                {
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MerchantId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("InventoryRestored")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("OrderId", "MerchantId");
+
+                    b.HasIndex("MerchantId");
+
+                    b.ToTable("MerchantOrderFulfillments");
+                });
+
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -361,6 +389,23 @@ namespace TakeoutPlatform.Api.Migrations
                     b.HasKey("OrderId");
 
                     b.ToTable("OrderCoupons");
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment", b =>
+                {
+                    b.HasOne("TakeoutPlatform.Api.Features.Merchant.Merchant", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TakeoutPlatform.Api.Features.Order.Order", "Order")
+                        .WithMany("MerchantFulfillments")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.OrderDish", b =>
@@ -486,6 +531,91 @@ namespace TakeoutPlatform.Api.Migrations
                     b.ToTable("UserAddresses");
                 });
 
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.Rider", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActiveDeliveryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.Property<string>("Zone")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Zone");
+
+                    b.ToTable("Riders");
+
+                    b.HasData(
+                        new { Id = 1, ActiveDeliveryCount = 0, Capacity = 3, IsActive = true, IsAvailable = true, Name = "Rider Zhang", PhoneNumber = "13700000001", Zone = "ZoneA" },
+                        new { Id = 2, ActiveDeliveryCount = 0, Capacity = 2, IsActive = true, IsAvailable = true, Name = "Rider Li", PhoneNumber = "13700000002", Zone = "ZoneA" },
+                        new { Id = 3, ActiveDeliveryCount = 0, Capacity = 3, IsActive = false, IsAvailable = true, Name = "Rider Off", PhoneNumber = "13700000003", Zone = "ZoneA" });
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.RiderDelivery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AssignedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeliveringAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PickedUpAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RiderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("RiderId");
+
+                    b.ToTable("RiderDeliveries");
+                });
+
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Cart.CartItem", b =>
                 {
                     b.HasOne("TakeoutPlatform.Api.Features.Merchant.Dish", "Dish")
@@ -591,6 +721,8 @@ namespace TakeoutPlatform.Api.Migrations
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.Order", b =>
                 {
+                    b.Navigation("MerchantFulfillments");
+
                     b.Navigation("OrderCoupon");
 
                     b.Navigation("OrderDishes");
@@ -598,6 +730,30 @@ namespace TakeoutPlatform.Api.Migrations
                     b.Navigation("OrderRider");
 
                     b.Navigation("OrderUser");
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.RiderDelivery", b =>
+                {
+                    b.HasOne("TakeoutPlatform.Api.Features.Order.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TakeoutPlatform.Api.Features.Rider.Rider", "Rider")
+                        .WithMany("Deliveries")
+                        .HasForeignKey("RiderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Rider");
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.Rider", b =>
+                {
+                    b.Navigation("Deliveries");
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.User.User", b =>
