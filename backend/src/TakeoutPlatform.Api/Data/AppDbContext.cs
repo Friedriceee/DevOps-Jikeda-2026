@@ -10,6 +10,8 @@ using OrderRider = TakeoutPlatform.Api.Features.Order.OrderRider;
 using OrderDish = TakeoutPlatform.Api.Features.Order.OrderDish;
 using OrderCoupon = TakeoutPlatform.Api.Features.Order.OrderCoupon;
 using MerchantOrderFulfillment = TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment;
+using Rider = TakeoutPlatform.Api.Features.Rider.Rider;
+using RiderDelivery = TakeoutPlatform.Api.Features.Rider.RiderDelivery;
 
 namespace TakeoutPlatform.Api.Data;
 
@@ -31,6 +33,8 @@ public class AppDbContext : DbContext
     public DbSet<MerchantOrderFulfillment> MerchantOrderFulfillments => Set<MerchantOrderFulfillment>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<PlatformCoupon> PlatformCoupons => Set<PlatformCoupon>();
+    public DbSet<Rider> Riders => Set<Rider>();
+    public DbSet<RiderDelivery> RiderDeliveries => Set<RiderDelivery>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -259,6 +263,41 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(item => item.MerchantId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------- 骑手与配送（Sprint 3 member5）----------
+        modelBuilder.Entity<Rider>(entity =>
+        {
+            entity.HasKey(rider => rider.Id);
+            entity.Property(rider => rider.Name).HasMaxLength(50).IsRequired();
+            entity.Property(rider => rider.PhoneNumber).HasMaxLength(11);
+            entity.Property(rider => rider.Zone).HasMaxLength(50).IsRequired();
+            entity.HasIndex(rider => rider.Zone);
+
+            // 预置演示骑手：同区在职可用、离职、下线、满载各一个，便于责任链演示与测试。
+            entity.HasData(
+                new Rider { Id = 1, Name = "Rider Zhang", PhoneNumber = "13700000001", IsActive = true, Zone = "ZoneA", IsAvailable = true, Capacity = 3, ActiveDeliveryCount = 0 },
+                new Rider { Id = 2, Name = "Rider Li", PhoneNumber = "13700000002", IsActive = true, Zone = "ZoneA", IsAvailable = true, Capacity = 2, ActiveDeliveryCount = 0 },
+                new Rider { Id = 3, Name = "Rider Off", PhoneNumber = "13700000003", IsActive = false, Zone = "ZoneA", IsAvailable = true, Capacity = 3, ActiveDeliveryCount = 0 });
+        });
+
+        modelBuilder.Entity<RiderDelivery>(entity =>
+        {
+            entity.HasKey(delivery => delivery.Id);
+            entity.Property(delivery => delivery.Status).HasConversion<int>();
+            // OrderId 唯一：一个订单只能有一条配送指派，防止重复接单。
+            entity.HasIndex(delivery => delivery.OrderId).IsUnique();
+            entity.HasIndex(delivery => delivery.RiderId);
+
+            entity.HasOne(delivery => delivery.Rider)
+                .WithMany(rider => rider.Deliveries)
+                .HasForeignKey(delivery => delivery.RiderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(delivery => delivery.Order)
+                .WithMany()
+                .HasForeignKey(delivery => delivery.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -44,4 +44,10 @@ export const routes = [
     component: () => import('@/views/customer/CheckoutView.vue'),
     meta: { requiresAuth: true, role: 'Customer' },
   },
+  {
+    path: '/rider/deliveries',
+    name: 'rider-deliveries',
+    component: () => import('@/views/rider/RiderDeliveryView.vue'),
+    meta: { requiresAuth: true, role: 'Rider' },
+  },
 ]

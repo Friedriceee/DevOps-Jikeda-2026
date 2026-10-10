@@ -76,6 +76,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<AddressService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.OrderService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.MerchantFulfillmentService>();
+builder.Services.AddScoped<TakeoutPlatform.Api.Features.Rider.RiderDeliveryService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddSingleton<IDiscountStrategy, MerchantDiscountStrategy>();
 builder.Services.AddSingleton<IDiscountStrategy, PlatformCouponDiscountStrategy>();
