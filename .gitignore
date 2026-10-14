@@ -31,3 +31,7 @@ pnpm-debug.log*
 
 # ---------- misc ----------
 *.log
+
+# local deployment state and secrets
+.env
+.deployed-tag

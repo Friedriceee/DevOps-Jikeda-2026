@@ -1,12 +1,22 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { usePricingStore } from '@/stores/pricing'
-import { createAddress, createOrder, listAddresses } from '@/api/order'
-import { buildOrderPayload, canPlaceOrder } from '@/utils/order'
+import { submitCheckout } from '@/api/checkout'
+import { createAddress, listAddresses } from '@/api/order'
+import {
+  PAYMENT_METHOD_APPROVE,
+  buildCheckoutPayload,
+  canPay,
+  checkoutErrorMessage,
+  createIdempotencyKey,
+  paymentMethodOptions,
+  shouldReuseIdempotencyKey,
+} from '@/utils/checkout'
+import { orderStatusText } from '@/utils/order'
 import { formatYuan } from '@/utils/money'
 
 const router = useRouter()
@@ -27,10 +37,34 @@ const addressForm = reactive({
 const loading = ref(false)
 const submitting = ref(false)
 
+// Payment is simulated. The decline test card is only offered in development or
+// when VITE_ENABLE_TEST_PAYMENT=true, so it never appears for a normal customer.
+const showTestPayment = import.meta.env.DEV || import.meta.env.VITE_ENABLE_TEST_PAYMENT === 'true'
+const paymentOptions = paymentMethodOptions({ includeTest: showTestPayment })
+const paymentMethod = ref(PAYMENT_METHOD_APPROVE)
+const checkoutError = ref('')
+const confirmation = ref(null)
+
+// One key per distinct checkout attempt. A retry after a network failure reuses it,
+// so the server returns the earlier result instead of charging twice. Changing
+// anything the customer chose starts a new attempt with a new key.
+const idempotencyKey = ref(createIdempotencyKey())
+watch(
+  [selectedAddressId, () => pricing.selectedCouponCode, needUtensils, paymentMethod],
+  () => {
+    idempotencyKey.value = createIdempotencyKey()
+    checkoutError.value = ''
+  },
+)
+
 const userId = computed(() => authStore.user?.profileId ?? null)
-const canSubmit = computed(() => pricing.hasQuote
-  && !pricing.loading
-  && canPlaceOrder({ addressId: selectedAddressId.value, cart: cart.items }))
+const canSubmit = computed(() => canPay({
+  addressId: selectedAddressId.value,
+  hasItems: cart.items.length > 0,
+  hasQuote: pricing.hasQuote,
+  quoting: pricing.loading,
+  submitting: submitting.value,
+}))
 
 async function loadCheckout() {
   loading.value = true
@@ -91,30 +125,46 @@ async function saveAddress() {
   ElMessage.success('Delivery address added.')
 }
 
+async function refreshAfterFailure(error) {
+  const code = error?.response?.data?.code
+  if (!['CartChanged', 'InsufficientStock', 'ItemUnavailable', 'EmptyCart'].includes(code)) return
+  try {
+    await cart.load()
+    if (cart.items.length > 0) await pricing.refreshQuote()
+    else pricing.reset()
+  } catch {
+    // The inline message already explains what happened.
+  }
+}
+
 async function placeOrder() {
   if (!canSubmit.value) {
-    ElMessage.warning('Choose a delivery address and resolve pricing errors before placing your order.')
+    ElMessage.warning('Choose a delivery address and resolve pricing errors before paying.')
     return
   }
 
   submitting.value = true
+  checkoutError.value = ''
   try {
     const selectedCoupon = pricing.quote.selectedCoupon
-    const payload = buildOrderPayload({
-      userId: userId.value,
-      addressId: selectedAddressId.value,
-      cart: cart.items,
-      riderPrice: pricing.quote.deliveryFee,
-      price: pricing.quote.total,
-      needUtensils: needUtensils.value ? 1 : 0,
-      couponId: selectedCoupon?.id ?? 0,
-      expirationDate: selectedCoupon?.expiresAtUtc ?? null,
-    })
-    await createOrder(payload)
-    await cart.clear()
+    const result = await submitCheckout(
+      buildCheckoutPayload({
+        addressId: selectedAddressId.value,
+        couponCode: selectedCoupon?.code ?? pricing.selectedCouponCode,
+        needUtensils: needUtensils.value,
+        paymentMethod: paymentMethod.value,
+      }),
+      idempotencyKey.value,
+    )
+    confirmation.value = result
     pricing.reset()
-    ElMessage.success('Order placed successfully.')
-    await router.push({ name: 'user-orders' })
+    // The server already emptied the cart; reload it so the rest of the app agrees.
+    await cart.load().catch(() => {})
+    ElMessage.success(result.replayed ? 'This order was already placed.' : 'Payment successful.')
+  } catch (error) {
+    checkoutError.value = checkoutErrorMessage(error)
+    if (!shouldReuseIdempotencyKey(error)) idempotencyKey.value = createIdempotencyKey()
+    await refreshAfterFailure(error)
   } finally {
     submitting.value = false
   }
@@ -134,7 +184,22 @@ onMounted(loadCheckout)
       <el-button @click="router.push({ name: 'customer-cart' })">Back to cart</el-button>
     </div>
 
-    <el-skeleton v-if="loading" :rows="6" animated />
+    <div v-if="confirmation" class="confirmation" data-testid="checkout-confirmation">
+      <div class="confirmation-icon" aria-hidden="true">✓</div>
+      <h2>{{ confirmation.replayed ? 'This order was already placed' : 'Payment successful' }}</h2>
+      <p>Your order is confirmed and has been sent to the restaurant.</p>
+      <dl class="confirmation-details">
+        <div><dt>Order number</dt><dd>#{{ confirmation.orderId }}</dd></div>
+        <div><dt>Amount paid</dt><dd>{{ formatYuan(confirmation.amountPaid) }}</dd></div>
+        <div><dt>Status</dt><dd>{{ orderStatusText(confirmation.status) }}</dd></div>
+        <div><dt>Payment reference</dt><dd>{{ confirmation.paymentReference }}</dd></div>
+      </dl>
+      <div class="confirmation-actions">
+        <el-button type="primary" @click="router.push({ name: 'user-orders' })">View my orders</el-button>
+        <el-button @click="router.push({ name: 'customer-merchants' })">Keep browsing</el-button>
+      </div>
+    </div>
+    <el-skeleton v-else-if="loading" :rows="6" animated />
     <el-empty v-else-if="cart.items.length === 0" description="Your cart is empty.">
       <el-button type="primary" @click="router.push({ name: 'customer-merchants' })">
         Browse restaurants
@@ -202,6 +267,22 @@ onMounted(loadCheckout)
         </el-card>
 
         <el-card shadow="never" class="checkout-card">
+          <template #header><strong>Payment</strong></template>
+          <el-radio-group v-model="paymentMethod" class="payment-options">
+            <el-radio
+              v-for="option in paymentOptions"
+              :key="option.value"
+              :value="option.value"
+              border
+            >
+              <span class="payment-label">{{ option.label }}</span>
+              <span class="payment-hint">{{ option.hint }}</span>
+            </el-radio>
+          </el-radio-group>
+          <p class="field-help">Payments are simulated in this version. No real card is charged.</p>
+        </el-card>
+
+        <el-card shadow="never" class="checkout-card">
           <template #header><strong>Platform coupon</strong></template>
           <el-select
             :model-value="pricing.selectedCouponCode"
@@ -239,6 +320,14 @@ onMounted(loadCheckout)
             <div><span>Delivery fee</span><span>{{ formatYuan(pricing.quote?.deliveryFee) }}</span></div>
             <div class="total-line"><strong>Total</strong><strong>{{ formatYuan(pricing.quote?.total) }}</strong></div>
           </div>
+          <el-alert
+            v-if="checkoutError"
+            :title="checkoutError"
+            type="error"
+            :closable="false"
+            show-icon
+            class="checkout-error"
+          />
           <el-button
             type="primary"
             size="large"
@@ -247,9 +336,9 @@ onMounted(loadCheckout)
             :disabled="!canSubmit"
             @click="placeOrder"
           >
-            Place order
+            Pay and place order
           </el-button>
-          <p class="pricing-note">The final amount is confirmed by the backend before the order is created.</p>
+          <p class="pricing-note">The server recalculates the total from your cart when you pay. Nothing you send can change the price.</p>
         </el-card>
       </aside>
     </div>
@@ -273,6 +362,20 @@ onMounted(loadCheckout)
 .saving { color: #218568; }
 .total-line { margin-top: 4px; padding-top: 16px; border-top: 1px solid #e3e9e6; font-size: 20px; }
 .place-order { width: 100%; margin-top: 22px; }
+.checkout-error { margin-top: 18px; }
+.payment-options { display: grid; width: 100%; gap: 10px; }
+.payment-options :deep(.el-radio) { width: 100%; height: auto; margin: 0; padding: 12px 16px; }
+.payment-label { display: block; font-weight: 700; }
+.payment-hint { display: block; margin-top: 2px; color: #71817d; font-size: 13px; font-weight: 400; }
+.confirmation { max-width: 560px; margin: 24px auto 0; padding: 36px 32px; border: 1px solid #dfe7e3; border-radius: 18px; background: #fff; text-align: center; }
+.confirmation-icon { display: grid; width: 64px; height: 64px; margin: 0 auto 14px; place-items: center; border-radius: 50%; background: #e3f4ec; color: #1f8a63; font-size: 32px; font-weight: 800; }
+.confirmation h2 { margin: 0 0 6px; font-size: 26px; }
+.confirmation p { margin: 0; color: #6a7c77; }
+.confirmation-details { display: grid; gap: 12px; margin: 26px 0; padding: 18px 20px; border-radius: 12px; background: #f5f8f6; text-align: left; }
+.confirmation-details > div { display: flex; justify-content: space-between; gap: 20px; }
+.confirmation-details dt { color: #6a7c77; }
+.confirmation-details dd { margin: 0; font-weight: 700; word-break: break-all; text-align: right; }
+.confirmation-actions { display: flex; justify-content: center; gap: 12px; }
 @media (max-width: 820px) {
   .checkout-grid { grid-template-columns: 1fr; }
   .page-heading { flex-direction: column; }

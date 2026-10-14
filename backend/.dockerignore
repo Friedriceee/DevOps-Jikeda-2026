@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+tests/
+TestResults/
+**/appsettings.Development.json
+**/demo.db*
+Dockerfile
+.dockerignore

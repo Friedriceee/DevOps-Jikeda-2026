@@ -115,3 +115,33 @@ describe('HTTP authentication and response handling', () => {
     expect(mocks.notifyError).toHaveBeenCalledWith('Forbidden')
   })
 })
+
+describe('silent requests', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('does not toast a failed request that opted out, but still marks it handled', async () => {
+    mocks.authStore.token = 'abc'
+    const error = { config: { silent: true }, response: { status: 402, data: { message: 'Declined' } } }
+
+    await expect(handleApiError(error, {
+      authStore: mocks.authStore,
+      router: mocks.router,
+      notify: mocks.notifyError,
+    })).rejects.toBe(error)
+
+    expect(mocks.notifyError).not.toHaveBeenCalled()
+    expect(error.userNotified).toBe(true)
+  })
+
+  it('still toasts normal failed requests', async () => {
+    const error = { config: {}, response: { status: 500, data: { message: 'Boom' } } }
+
+    await expect(handleApiError(error, {
+      authStore: mocks.authStore,
+      router: mocks.router,
+      notify: mocks.notifyError,
+    })).rejects.toBe(error)
+
+    expect(mocks.notifyError).toHaveBeenCalledWith('Boom')
+  })
+})

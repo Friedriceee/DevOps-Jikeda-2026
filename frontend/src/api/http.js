@@ -45,7 +45,11 @@ export function handleApiError(error, { authStore, router, notify = () => {} }) 
       })
     }
   } else {
-    notify(error.response?.data?.message || 'Network error. Please try again.')
+    // A request can opt out of the global toast (`silent`) when its page shows
+    // a more specific message itself.
+    if (!error.config?.silent) {
+      notify(error.response?.data?.message || 'Network error. Please try again.')
+    }
     error.userNotified = true
   }
   return Promise.reject(error)

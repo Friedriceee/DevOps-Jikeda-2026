@@ -41,6 +41,18 @@ npm ci
 npm run dev                                     # http://localhost:5173
 ```
 
+### Or run everything in containers
+
+```bash
+docker compose --profile app up -d --build   # PostgreSQL + API + frontend
+# app: http://localhost:8080   API: http://localhost:5080
+# demo logins: demo_customer / demo_merchant / demo_rider  (password: SEED_PASSWORD, default DemoPass123!)
+
+BASE_URL=http://localhost:8080 SMOKE_PASSWORD='DemoPass123!' node scripts/smoke/staging-smoke.mjs
+```
+
+The smoke script walks one order from checkout and simulated payment through merchant fulfilment and rider delivery. The same script gates every deployment; see [docs/devops/staging-runbook.md](docs/devops/staging-runbook.md).
+
 ## Project Structure
 
 ```
@@ -55,8 +67,10 @@ npm run dev                                     # http://localhost:5173
 ├── frontend/
 │   └── src/{api,router,stores,views,utils}/
 ├── docs/                              # Deliverables and design docs, see docs/README.md
-├── docker-compose.yml
-└── .github/workflows/                 # ci.yml, codeql.yml
+├── docker-compose.yml                 # local: PostgreSQL, or the whole stack with --profile app
+├── docker-compose.staging.yml         # release stack used by CD
+├── scripts/                           # smoke test, deploy script
+└── .github/workflows/                 # ci.yml, cd.yml, codeql.yml
 ```
 
 ## Documentation
@@ -64,7 +78,8 @@ npm run dev                                     # http://localhost:5173
 - [docs/README.md](docs/README.md) — Deliverables index (assignment requirements ↔ repo files)
 - [docs/agile/sprint-01-plan.md](docs/agile/sprint-01-plan.md) — Sprint 1 plan and task breakdown
 - [docs/api-contract.md](docs/api-contract.md) — API contract
-- [docs/devops/pipeline-design.md](docs/devops/pipeline-design.md) — DevOps/DevSecOps pipeline design
+- [docs/devops/pipeline-design.md](docs/devops/pipeline-design.md) — CI/CD and DevSecOps pipeline design
+- [docs/devops/staging-runbook.md](docs/devops/staging-runbook.md) — run, deploy, verify and roll back staging
 
 ## Contributing
 

@@ -30,6 +30,61 @@ soft-delisting feature or change other members' fulfilment states or pricing rul
 
 前后端并行开发的唯一依据。改接口先改这个文件，并在 PR 里说明。
 
+## Sprint 3 — Member 1: Checkout and simulated payment
+
+`POST /api/checkout` — Customer role only. Turns the signed-in customer's **persisted cart** into a **paid** order.
+
+**Headers**: `Authorization: Bearer <token>`, `Idempotency-Key: <8-64 chars of A-Z a-z 0-9 - _>` (required).
+
+**Body** — the customer's choices only:
+
+| Field | Type | Rules |
+|---|---|---|
+| `addressId` | int | required; must be one of the caller's own addresses |
+| `couponCode` | string? | optional platform coupon, case-insensitive |
+| `needUtensils` | 0/1 | default 0 |
+| `paymentMethod` | string | `SimulatedCard` (approved, default) or `SimulatedCardDeclined` (test card, declined; enabled by `Payment:AllowSimulatedDecline`) |
+
+There is deliberately **no** price, total, item list or user id. Identity comes from the JWT, items from the cart table and every amount from `PricingService`. Unknown JSON members (for example `total`, `price`, `userId`, `shoppingCart`) are ignored.
+
+**Success** — `201` for the first request, `200` with `replayed: true` for a repeat of the same key:
+
+```json
+{ "success": true, "data": {
+    "orderId": 12, "status": 1, "amountPaid": 52.00,
+    "paymentId": 7, "paymentReference": "SIM-7C76570A55FF4456", "paymentMethod": "SimulatedCard",
+    "paidAtUtc": "2026-10-10T10:20:00Z", "replayed": false,
+    "pricing": { "subtotal": 60.00, "merchantDiscount": 8.00, "couponDiscount": 5.00,
+                 "deliveryFee": 5.00, "total": 52.00, "selectedCoupon": { }, "merchants": [ ] },
+    "dishes": [ { "merchantId": 1, "dishId": 3, "dishNum": 5 } ] } }
+```
+
+`status` follows `OrderStatus`: a paid order is `1` (Paid, which the merchant module treats as *Confirmed*).
+
+**Errors** — `ApiResult.code` is stable and machine-readable:
+
+| HTTP | `code` | Meaning |
+|---|---|---|
+| 400 | `InvalidIdempotencyKey` | header missing or malformed |
+| 400 | `UnsupportedPaymentMethod` | method not offered |
+| 400 | `EmptyCart`, `CouponNotFound`, `CouponInactive`, `CouponNotStarted`, `CouponExpired`, `MinimumSpendNotMet` | pricing failed (see `PricingErrorCode`) |
+| 401 / 403 | — | no token / not a Customer |
+| 402 | `PaymentDeclined` | payment refused; **nothing changed** |
+| 404 | `AddressNotFound` | not the caller's address |
+| 409 | `InsufficientStock`, `ItemUnavailable` | stock or availability changed; nothing changed |
+| 409 | `CartChanged` | cart changed while checking out |
+| 409 | `IdempotencyKeyReused` | same key, different request |
+
+**Guarantees**
+
+- *Atomic*: claim cart → create order rows → reserve stock (`InventoryService`) → charge → mark Paid → store payment, in one transaction. A decline or any failure rolls everything back, including stock and the cart; no order is left behind.
+- *Idempotent*: `(userId, Idempotency-Key)` is unique in `Payments`. A repeat returns the stored result without charging, touching stock or changing state. Racing duplicates are resolved by the unique index and the cart claim; the loser returns the winner's result.
+- *No double spend with different keys*: only one concurrent checkout can claim a given cart; the others get `CartChanged`.
+- *Replay snapshot*: the original `pricing` is stored with the payment, so a replay returns the same amounts even if prices changed later.
+- A declined attempt stores nothing, so the customer may retry with the same or a new key.
+
+Client guidance: generate one key per checkout attempt, **reuse it only when the outcome is unknown** (network error or 5xx), and use a new key after any definite answer or when the customer changes the address, coupon or payment method.
+
 ## 通用响应格式
 
 所有接口统一返回：

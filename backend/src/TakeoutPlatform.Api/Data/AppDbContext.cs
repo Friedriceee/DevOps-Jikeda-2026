@@ -3,6 +3,7 @@ using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.User;
 using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Cart;
+using TakeoutPlatform.Api.Features.Checkout;
 using TakeoutPlatform.Api.Features.Pricing;
 using TakeoutPlatform.Api.Features.Inventory;
 using Order = TakeoutPlatform.Api.Features.Order.Order;
@@ -33,6 +34,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderCoupon> OrderCoupons => Set<OrderCoupon>();
     public DbSet<MerchantOrderFulfillment> MerchantOrderFulfillments => Set<MerchantOrderFulfillment>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<PlatformCoupon> PlatformCoupons => Set<PlatformCoupon>();
     public DbSet<Rider> Riders => Set<Rider>();
     public DbSet<RiderDelivery> RiderDeliveries => Set<RiderDelivery>();
@@ -220,6 +222,26 @@ public class AppDbContext : DbContext
                     ExpiresAtUtc = new DateTimeOffset(2099, 12, 31, 23, 59, 59, TimeSpan.Zero),
                     IsActive = true,
                 });
+        });
+
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.Property(payment => payment.IdempotencyKey).HasMaxLength(64).IsRequired();
+            entity.Property(payment => payment.RequestHash).HasMaxLength(64).IsRequired();
+            entity.Property(payment => payment.Amount).HasPrecision(18, 2);
+            entity.Property(payment => payment.Method).HasMaxLength(40).IsRequired();
+            entity.Property(payment => payment.Status).HasConversion<int>();
+            entity.Property(payment => payment.Reference).HasMaxLength(64).IsRequired();
+            entity.Property(payment => payment.PricingSnapshotJson).IsRequired();
+
+            // One payment per order, and one result per (customer, Idempotency-Key).
+            entity.HasIndex(payment => payment.OrderId).IsUnique();
+            entity.HasIndex(payment => new { payment.UserId, payment.IdempotencyKey }).IsUnique();
+
+            entity.HasOne(payment => payment.Order)
+                .WithMany()
+                .HasForeignKey(payment => payment.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ---------- 订单五表结构（对应旧项目 OrderDB 等）----------

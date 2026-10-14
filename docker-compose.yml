@@ -1,3 +1,11 @@
+# Local environment.
+#
+#   docker compose up -d                        PostgreSQL only (run the API and Vite on your host)
+#   docker compose --profile app up -d --build  the whole stack: PostgreSQL + API + frontend
+#
+# Full stack: http://localhost:8080 (app, proxies /api) and http://localhost:5080 (API).
+# Demo accounts are seeded: demo_customer / demo_merchant / demo_rider, password from SEED_PASSWORD.
+
 services:
   db:
     image: postgres:16
@@ -14,6 +22,52 @@ services:
       test: ["CMD-SHELL", "pg_isready -U takeout"]
       interval: 5s
       timeout: 5s
+      retries: 10
+
+  api:
+    profiles: ["app"]
+    build:
+      context: ./backend
+    image: takeout-api:local
+    container_name: takeout-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=takeout;Username=takeout;Password=takeout"
+      # Local-only defaults. Real environments inject these from secrets.
+      Jwt__Key: ${JWT_KEY:-local-compose-only-signing-key-please-change}
+      Database__MigrateOnStartup: "true"
+      Seed__Enabled: "true"
+      Seed__Password: ${SEED_PASSWORD:-DemoPass123!}
+      Payment__AllowSimulatedDecline: "true"
+    ports:
+      - "5080:8080"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /api/health HTTP/1.0\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q ' 200 '"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  frontend:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+      args:
+        VITE_ENABLE_TEST_PAYMENT: "true"
+    image: takeout-frontend:local
+    container_name: takeout-frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
       retries: 10
 
 volumes:

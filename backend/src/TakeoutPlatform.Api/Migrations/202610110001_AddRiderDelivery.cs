@@ -74,6 +74,13 @@ public partial class AddRiderDelivery : Migration
         migrationBuilder.InsertData(
             table: "Riders",
             columns: new[] { "Id", "Name", "PhoneNumber", "IsActive", "Zone", "IsAvailable", "Capacity", "ActiveDeliveryCount" },
+            // This migration has no Designer/TargetModel, so EF cannot infer column
+            // types for a data operation. Without them Migrate() fails on a fresh database.
+            columnTypes: new[]
+            {
+                "integer", "character varying(50)", "character varying(11)", "boolean",
+                "character varying(50)", "boolean", "integer", "integer",
+            },
             values: new object[,]
             {
                 { 1, "Rider Zhang", "13700000001", true, "ZoneA", true, 3, 0 },
