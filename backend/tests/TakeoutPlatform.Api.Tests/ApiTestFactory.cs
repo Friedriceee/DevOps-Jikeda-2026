@@ -48,6 +48,7 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
         {
             new Claim(JwtRegisteredClaimNames.Sub, accountId.ToString()),
             new Claim(ClaimTypes.NameIdentifier, accountId.ToString()),
+            new Claim(ClaimTypes.Name, $"test-{role.ToString().ToLowerInvariant()}"),
             new Claim("role", role.ToString()),
             new Claim(ClaimsPrincipalExtensions.ProfileIdClaim, profileId.ToString()),
         };

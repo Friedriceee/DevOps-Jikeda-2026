@@ -41,6 +41,15 @@ describe('auth route guard', () => {
     expect(result).toEqual({ name: 'merchant-dishes' })
   })
 
+  it('redirects authenticated administrators to the operations console', () => {
+    const result = authGuard(
+      { isAuthenticated: true, role: 'Administrator', hasRole: vi.fn() },
+      target({ name: 'login', fullPath: '/login' }),
+    )
+    expect(result).toEqual({ name: 'admin-dashboard' })
+    expect(postLoginDestination(null, 'Administrator')).toBe('/admin')
+  })
+
   it('blocks users with the wrong role', () => {
     const result = authGuard(
       { isAuthenticated: true, hasRole: () => false },

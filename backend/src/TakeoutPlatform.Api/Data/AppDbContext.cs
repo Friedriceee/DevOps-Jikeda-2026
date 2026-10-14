@@ -13,6 +13,7 @@ using OrderCoupon = TakeoutPlatform.Api.Features.Order.OrderCoupon;
 using MerchantOrderFulfillment = TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment;
 using Rider = TakeoutPlatform.Api.Features.Rider.Rider;
 using RiderDelivery = TakeoutPlatform.Api.Features.Rider.RiderDelivery;
+using AuditLog = TakeoutPlatform.Api.Features.Audit.AuditLog;
 
 namespace TakeoutPlatform.Api.Data;
 
@@ -37,11 +38,27 @@ public class AppDbContext : DbContext
     public DbSet<Rider> Riders => Set<Rider>();
     public DbSet<RiderDelivery> RiderDeliveries => Set<RiderDelivery>();
     public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(log => log.Id);
+            entity.Property(log => log.Actor).HasMaxLength(100).IsRequired();
+            entity.Property(log => log.Role).HasMaxLength(30).IsRequired();
+            entity.Property(log => log.Action).HasMaxLength(80).IsRequired();
+            entity.Property(log => log.TargetType).HasMaxLength(80).IsRequired();
+            entity.Property(log => log.TargetId).HasMaxLength(100).IsRequired();
+            entity.Property(log => log.Result).HasMaxLength(200).IsRequired();
+            entity.Property(log => log.CorrelationId).HasMaxLength(100).IsRequired();
+            entity.HasIndex(log => log.TimestampUtc);
+            entity.HasIndex(log => new { log.TargetType, log.TargetId });
+            entity.HasIndex(log => log.CorrelationId);
+        });
 
         modelBuilder.Entity<Merchant>(entity =>
         {
@@ -327,5 +344,28 @@ public class AppDbContext : DbContext
                 .HasForeignKey(delivery => delivery.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        EnforceAuditAppendOnly();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        EnforceAuditAppendOnly();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void EnforceAuditAppendOnly()
+    {
+        var mutation = ChangeTracker.Entries<AuditLog>()
+            .FirstOrDefault(entry => entry.State is EntityState.Modified or EntityState.Deleted);
+
+        if (mutation is not null)
+            throw new InvalidOperationException("Audit logs are append-only and cannot be changed or deleted.");
     }
 }

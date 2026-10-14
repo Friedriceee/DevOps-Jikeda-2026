@@ -12,6 +12,12 @@ describe('application route access rules', () => {
     expect(merchantRoute.meta).toEqual({ requiresAuth: true, role: 'Merchant' })
   })
 
+  it('protects the administration console with the Administrator role', () => {
+    const adminRoute = routes.find((route) => route.name === 'admin-dashboard')
+    expect(adminRoute.path).toBe('/admin')
+    expect(adminRoute.meta).toEqual({ requiresAuth: true, role: 'Administrator' })
+  })
+
   it('protects merchant order fulfilment with the Merchant role', () => {
     const merchantOrders = routes.find((route) => route.name === 'merchant-orders')
     expect(merchantOrders.path).toBe('/merchant/orders')

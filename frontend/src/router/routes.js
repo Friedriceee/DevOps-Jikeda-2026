@@ -3,6 +3,12 @@ export const routes = [
   { path: '/login', name: 'login', component: () => import('@/views/auth/LoginView.vue') },
   { path: '/register', name: 'register', component: () => import('@/views/auth/RegisterView.vue') },
   {
+    path: '/admin',
+    name: 'admin-dashboard',
+    component: () => import('@/views/admin/AdminDashboardView.vue'),
+    meta: { requiresAuth: true, role: 'Administrator' },
+  },
+  {
     path: '/merchant/orders',
     name: 'merchant-orders',
     component: () => import('@/views/merchant/MerchantOrdersView.vue'),

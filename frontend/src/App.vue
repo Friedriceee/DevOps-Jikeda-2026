@@ -27,6 +27,7 @@ async function logout() {
           <el-button link @click="router.push({ name: 'merchant-special-offers' })">Offers</el-button>
         </template>
         <el-button v-if="authStore.role === 'Rider'" link @click="router.push({ name: 'rider-deliveries' })">Deliveries</el-button>
+        <el-button v-if="authStore.role === 'Administrator'" link @click="router.push({ name: 'admin-dashboard' })">Administration</el-button>
       </nav>
       <div class="header-actions">
         <span v-if="authStore.isAuthenticated" class="user-info">
