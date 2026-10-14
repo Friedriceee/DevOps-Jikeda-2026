@@ -72,6 +72,20 @@ public class AppDbContext : DbContext
             entity.Property(account => account.Role).HasConversion<string>().HasMaxLength(20);
             entity.HasIndex(account => account.NormalizedUsername).IsUnique();
             entity.HasIndex(account => new { account.Role, account.ProfileId }).IsUnique();
+
+            // 种子管理员账号（仅用于 staging/测试，不是生产密钥）。
+            // 用户名 admin / 密码 Admin@12345（哈希为 Identity PasswordHasher 预生成）。
+            entity.HasData(new Account
+            {
+                Id = 1000,
+                Username = "admin",
+                NormalizedUsername = "ADMIN",
+                PasswordHash = "AQAAAAIAAYagAAAAEP8/kHbqZOLjY1r3lOeyHus9BtbVjlwlQHFjJ4AvAWRSQwPvAllNkaLJ9XNK+nk6kA==",
+                Role = AccountRole.Administrator,
+                ProfileId = 0,
+                CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsActive = true,
+            });
         });
 
         modelBuilder.Entity<Dish>(entity =>

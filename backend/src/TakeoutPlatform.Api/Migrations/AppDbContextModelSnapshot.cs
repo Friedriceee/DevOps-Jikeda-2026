@@ -33,6 +33,9 @@ namespace TakeoutPlatform.Api.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("NormalizedUsername")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -65,6 +68,19 @@ namespace TakeoutPlatform.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Accounts");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1000,
+                            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            NormalizedUsername = "ADMIN",
+                            PasswordHash = "AQAAAAIAAYagAAAAEP8/kHbqZOLjY1r3lOeyHus9BtbVjlwlQHFjJ4AvAWRSQwPvAllNkaLJ9XNK+nk6kA==",
+                            ProfileId = 0,
+                            Role = "Administrator",
+                            Username = "admin"
+                        });
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Cart.CartItem", b =>
@@ -282,73 +298,6 @@ namespace TakeoutPlatform.Api.Migrations
                     b.ToTable("SpecialOffers");
                 });
 
-            modelBuilder.Entity("TakeoutPlatform.Api.Features.Pricing.PlatformCoupon", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<decimal>("DiscountAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<DateTimeOffset>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("MinimumSpend")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTimeOffset>("StartsAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.ToTable("PlatformCoupons");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Code = "WELCOME5",
-                            DiscountAmount = 5m,
-                            ExpiresAtUtc = new DateTimeOffset(2099, 12, 31, 23, 59, 59, TimeSpan.Zero),
-                            IsActive = true,
-                            MinimumSpend = 20m,
-                            Name = "Welcome ¥5 off",
-                            StartsAtUtc = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Code = "SAVE12",
-                            DiscountAmount = 12m,
-                            ExpiresAtUtc = new DateTimeOffset(2099, 12, 31, 23, 59, 59, TimeSpan.Zero),
-                            IsActive = true,
-                            MinimumSpend = 80m,
-                            Name = "Save ¥12 on larger orders",
-                            StartsAtUtc = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)
-                        });
-                });
-
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment", b =>
                 {
                     b.Property<int>("OrderId")
@@ -443,23 +392,6 @@ namespace TakeoutPlatform.Api.Migrations
                     b.ToTable("OrderCoupons");
                 });
 
-            modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment", b =>
-                {
-                    b.HasOne("TakeoutPlatform.Api.Features.Merchant.Merchant", null)
-                        .WithMany()
-                        .HasForeignKey("MerchantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("TakeoutPlatform.Api.Features.Order.Order", "Order")
-                        .WithMany("MerchantFulfillments")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Order");
-                });
-
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.OrderDish", b =>
                 {
                     b.Property<int>("OrderId")
@@ -509,6 +441,188 @@ namespace TakeoutPlatform.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("OrderUsers");
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Pricing.PlatformCoupon", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MinimumSpend")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("StartsAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("PlatformCoupons");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Code = "WELCOME5",
+                            DiscountAmount = 5m,
+                            ExpiresAtUtc = new DateTimeOffset(new DateTime(2099, 12, 31, 23, 59, 59, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            MinimumSpend = 20m,
+                            Name = "Welcome ¥5 off",
+                            StartsAtUtc = new DateTimeOffset(new DateTime(2020, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Code = "SAVE12",
+                            DiscountAmount = 12m,
+                            ExpiresAtUtc = new DateTimeOffset(new DateTime(2099, 12, 31, 23, 59, 59, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            IsActive = true,
+                            MinimumSpend = 80m,
+                            Name = "Save ¥12 on larger orders",
+                            StartsAtUtc = new DateTimeOffset(new DateTime(2020, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        });
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.Rider", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActiveDeliveryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
+
+                    b.Property<string>("Zone")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Zone");
+
+                    b.ToTable("Riders");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            ActiveDeliveryCount = 0,
+                            Capacity = 3,
+                            IsActive = true,
+                            IsAvailable = true,
+                            Name = "Rider Zhang",
+                            PhoneNumber = "13700000001",
+                            Zone = "ZoneA"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            ActiveDeliveryCount = 0,
+                            Capacity = 2,
+                            IsActive = true,
+                            IsAvailable = true,
+                            Name = "Rider Li",
+                            PhoneNumber = "13700000002",
+                            Zone = "ZoneA"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            ActiveDeliveryCount = 0,
+                            Capacity = 3,
+                            IsActive = false,
+                            IsAvailable = true,
+                            Name = "Rider Off",
+                            PhoneNumber = "13700000003",
+                            Zone = "ZoneA"
+                        });
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.RiderDelivery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AssignedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeliveringAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PickedUpAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RiderId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("RiderId");
+
+                    b.ToTable("RiderDeliveries");
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.User.User", b =>
@@ -583,91 +697,6 @@ namespace TakeoutPlatform.Api.Migrations
                     b.ToTable("UserAddresses");
                 });
 
-            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.Rider", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ActiveDeliveryCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Capacity")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsAvailable")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasMaxLength(11)
-                        .HasColumnType("character varying(11)");
-
-                    b.Property<string>("Zone")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Zone");
-
-                    b.ToTable("Riders");
-
-                    b.HasData(
-                        new { Id = 1, ActiveDeliveryCount = 0, Capacity = 3, IsActive = true, IsAvailable = true, Name = "Rider Zhang", PhoneNumber = "13700000001", Zone = "ZoneA" },
-                        new { Id = 2, ActiveDeliveryCount = 0, Capacity = 2, IsActive = true, IsAvailable = true, Name = "Rider Li", PhoneNumber = "13700000002", Zone = "ZoneA" },
-                        new { Id = 3, ActiveDeliveryCount = 0, Capacity = 3, IsActive = false, IsAvailable = true, Name = "Rider Off", PhoneNumber = "13700000003", Zone = "ZoneA" });
-                });
-
-            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.RiderDelivery", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("AssignedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("CompletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("DeliveringAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("PickedUpAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("RiderId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId")
-                        .IsUnique();
-
-                    b.HasIndex("RiderId");
-
-                    b.ToTable("RiderDeliveries");
-                });
-
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Cart.CartItem", b =>
                 {
                     b.HasOne("TakeoutPlatform.Api.Features.Merchant.Dish", "Dish")
@@ -724,6 +753,23 @@ namespace TakeoutPlatform.Api.Migrations
                     b.Navigation("Merchant");
                 });
 
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.MerchantOrderFulfillment", b =>
+                {
+                    b.HasOne("TakeoutPlatform.Api.Features.Merchant.Merchant", null)
+                        .WithMany()
+                        .HasForeignKey("MerchantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TakeoutPlatform.Api.Features.Order.Order", "Order")
+                        .WithMany("MerchantFulfillments")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Order.OrderCoupon", b =>
                 {
                     b.HasOne("TakeoutPlatform.Api.Features.Order.Order", "Order")
@@ -768,6 +814,25 @@ namespace TakeoutPlatform.Api.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.RiderDelivery", b =>
+                {
+                    b.HasOne("TakeoutPlatform.Api.Features.Order.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TakeoutPlatform.Api.Features.Rider.Rider", "Rider")
+                        .WithMany("Deliveries")
+                        .HasForeignKey("RiderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Rider");
+                });
+
             modelBuilder.Entity("TakeoutPlatform.Api.Features.User.UserAddress", b =>
                 {
                     b.HasOne("TakeoutPlatform.Api.Features.User.User", "User")
@@ -797,25 +862,6 @@ namespace TakeoutPlatform.Api.Migrations
                     b.Navigation("OrderRider");
 
                     b.Navigation("OrderUser");
-                });
-
-            modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.RiderDelivery", b =>
-                {
-                    b.HasOne("TakeoutPlatform.Api.Features.Order.Order", "Order")
-                        .WithMany()
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("TakeoutPlatform.Api.Features.Rider.Rider", "Rider")
-                        .WithMany("Deliveries")
-                        .HasForeignKey("RiderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Order");
-
-                    b.Navigation("Rider");
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.Rider", b =>
