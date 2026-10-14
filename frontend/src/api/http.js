@@ -45,7 +45,9 @@ export function handleApiError(error, { authStore, router, notify = () => {} }) 
       })
     }
   } else {
-    notify(error.response?.data?.message || 'Network error. Please try again.')
+    if (!error.config?.silent) {
+      notify(error.response?.data?.message || 'Network error. Please try again.')
+    }
     error.userNotified = true
   }
   return Promise.reject(error)

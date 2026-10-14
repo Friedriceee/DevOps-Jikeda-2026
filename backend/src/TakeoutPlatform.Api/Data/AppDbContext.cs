@@ -5,6 +5,7 @@ using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Cart;
 using TakeoutPlatform.Api.Features.Pricing;
 using TakeoutPlatform.Api.Features.Inventory;
+using TakeoutPlatform.Api.Features.Checkout;
 using Order = TakeoutPlatform.Api.Features.Order.Order;
 using OrderUser = TakeoutPlatform.Api.Features.Order.OrderUser;
 using OrderRider = TakeoutPlatform.Api.Features.Order.OrderRider;
@@ -39,6 +40,7 @@ public class AppDbContext : DbContext
     public DbSet<RiderDelivery> RiderDeliveries => Set<RiderDelivery>();
     public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -58,6 +60,23 @@ public class AppDbContext : DbContext
             entity.HasIndex(log => log.TimestampUtc);
             entity.HasIndex(log => new { log.TargetType, log.TargetId });
             entity.HasIndex(log => log.CorrelationId);
+        });
+
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.Property(payment => payment.IdempotencyKey).HasMaxLength(64).IsRequired();
+            entity.Property(payment => payment.RequestHash).HasMaxLength(64).IsRequired();
+            entity.Property(payment => payment.Amount).HasPrecision(18, 2);
+            entity.Property(payment => payment.Method).HasMaxLength(40).IsRequired();
+            entity.Property(payment => payment.Status).HasConversion<int>();
+            entity.Property(payment => payment.Reference).HasMaxLength(64).IsRequired();
+            entity.Property(payment => payment.PricingSnapshotJson).IsRequired();
+            entity.HasIndex(payment => payment.OrderId).IsUnique();
+            entity.HasIndex(payment => new { payment.UserId, payment.IdempotencyKey }).IsUnique();
+            entity.HasOne(payment => payment.Order)
+                .WithMany()
+                .HasForeignKey(payment => payment.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Merchant>(entity =>

@@ -116,6 +116,33 @@ public class OrderServiceTests : ServiceTestBase
     }
 
     [Test]
+    public async Task CreateAsync_normalizes_browser_local_dates_to_utc()
+    {
+        int dishId;
+        await using (var seed = CreateContext())
+        {
+            dishId = SeedDish(seed, inventory: 10);
+        }
+
+        await using var context = CreateContext();
+        var service = new OrderService(context);
+        var request = NewOrderRequest(SeededUserId, addressId: 1, Item(dishId, 1));
+        request.OrderTimestamp = DateTime.SpecifyKind(DateTime.Now, DateTimeKind.Local);
+        request.CouponId = 5;
+        request.ExpirationDate = DateTime.SpecifyKind(DateTime.Now.AddDays(7), DateTimeKind.Local);
+        var expectedOrderTimestampUtc = request.OrderTimestamp.ToUniversalTime();
+        var expectedExpirationUtc = request.ExpirationDate.ToUniversalTime();
+
+        var result = await service.CreateAsync(request, CancellationToken.None);
+
+        Assert.That(result.Outcome, Is.EqualTo(CreateOrderOutcome.Success));
+        await using var verify = CreateContext();
+        // SQLite does not retain DateTime.Kind, but it does retain the UTC-normalized value.
+        Assert.That(verify.Orders.Single().OrderTimestamp, Is.EqualTo(expectedOrderTimestampUtc));
+        Assert.That(verify.OrderCoupons.Single().ExpirationDate, Is.EqualTo(expectedExpirationUtc));
+    }
+
+    [Test]
     public async Task CreateAsync_with_empty_cart_returns_empty_cart_and_persists_nothing()
     {
         await using var context = CreateContext();

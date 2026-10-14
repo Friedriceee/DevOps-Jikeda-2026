@@ -13,6 +13,8 @@ using TakeoutPlatform.Api.Features.Cart;
 using TakeoutPlatform.Api.Features.User;
 using TakeoutPlatform.Api.Features.Pricing;
 using TakeoutPlatform.Api.Features.Inventory;
+using TakeoutPlatform.Api.Features.Checkout;
+using TakeoutPlatform.Api.Features.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -80,6 +82,10 @@ builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.MerchantFulfillmen
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Rider.RiderDeliveryService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<InventoryService>();
+builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
+builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(PaymentOptions.SectionName));
+builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
+builder.Services.AddScoped<CheckoutService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Audit.AuditLogService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Audit.IAuditLogger>(services =>
     services.GetRequiredService<TakeoutPlatform.Api.Features.Audit.AuditLogService>());
@@ -97,6 +103,15 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod()));
 
 var app = builder.Build();
+
+// Local/staging containers can opt into migration and demo accounts through
+// configuration. Production keeps both operations under deployment control.
+if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var migrationScope = app.Services.CreateScope();
+    await migrationScope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+}
+await StagingSeeder.RunAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

@@ -79,7 +79,7 @@ public sealed class OrderService
                 Price = request.Price,
                 OrderTimestamp = request.OrderTimestamp == default
                     ? DateTime.UtcNow
-                    : request.OrderTimestamp,
+                    : AsUtc(request.OrderTimestamp),
                 ExpectedTimeOfArrival = null,
                 RealTimeOfArrival = null,
                 Status = OrderStatus.Pending,   // 旧项目 State = 0
@@ -101,7 +101,7 @@ public sealed class OrderService
                     OrderId = order.Id,
                     UserId = request.UserId,
                     CouponId = request.CouponId,
-                    ExpirationDate = request.ExpirationDate,
+                    ExpirationDate = AsUtc(request.ExpirationDate),
                 });
             }
 
@@ -157,6 +157,13 @@ public sealed class OrderService
             throw;
         }
     }
+
+    private static DateTime AsUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+    };
 
     /// <summary>
     /// 按用户查询订单列表。参照旧 getOrders（通过 OrderUser 关联找到用户的订单）。
