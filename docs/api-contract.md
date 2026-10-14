@@ -187,3 +187,57 @@ GET /api/merchant/{merchantId}/special-offers
 ```
 
 响应 `200`：`data` 为活动数组。
+
+
+## Sprint 4：管理员后端（Administrator）
+
+> 所有 `/api/admin/*` 接口要求 `Authorize(Roles = Administrator)`：匿名返回 `401`，非管理员角色（Customer/Merchant/Rider）返回 `403`。管理员身份与操作者（actor）取自 JWT，不信任请求参数。敏感操作写审计日志（member3 的 Audit Log）。
+> 平台种子管理员账号：用户名 `admin` / 密码 `Admin@12345`（仅用于 staging 与测试，非生产密钥）。
+
+### 账号查询
+```
+GET /api/admin/accounts?role={role}&page={page}&pageSize={pageSize}
+```
+`role` 可选，按角色筛选（Customer/Merchant/Rider/Administrator）。分页默认 `page=1`、`pageSize=20`（上限 100）。响应 `200`：`data` 为 `PagedResult`，含 `items`（`id`、`username`、`role`、`profileId`、`isActive`、`createdAtUtc`）、`page`、`pageSize`、`totalCount`、`totalPages`。
+
+### 启用 / 停用账号
+```
+PUT /api/admin/accounts/{accountId}/status
+```
+请求体：`{ "isActive": true|false }`。停用后该账号即使凭据正确也无法登录。`404`：账号不存在。
+
+### 受控调整账号角色
+```
+PUT /api/admin/accounts/{accountId}/role
+```
+请求体：`{ "role": "Customer|Merchant|Rider|Administrator" }`。角色非法返回 `400`；账号不存在返回 `404`。
+
+### 查询平台优惠券
+```
+GET /api/admin/coupons
+```
+响应 `200`：`data` 为优惠券数组（`id`、`code`、`name`、`minimumSpend`、`discountAmount`、`startsAtUtc`、`expiresAtUtc`、`isActive`）。
+
+### 新建优惠券
+```
+POST /api/admin/coupons
+```
+请求体：`code`（必填，唯一，≤40）、`name`（必填，≤100）、`minimumSpend`（≥0）、`discountAmount`（> 0）、`startsAtUtc`、`expiresAtUtc`（须晚于 `startsAtUtc`）、`isActive`。响应 `201`。`409`：优惠券码重复；`400`：日期区间非法或金额无效。
+
+### 修改优惠券
+```
+PUT /api/admin/coupons/{couponId}
+```
+请求体：`name`、`minimumSpend`、`discountAmount`、`startsAtUtc`、`expiresAtUtc`（不含 `code`，码不可改）。规则同新建。`404`：优惠券不存在。
+
+### 启用 / 停用优惠券
+```
+PUT /api/admin/coupons/{couponId}/status
+```
+请求体：`{ "isActive": true|false }`。`404`：优惠券不存在。
+
+### 管理员订单查询
+```
+GET /api/admin/orders?userId={userId}&status={status}&fromUtc={fromUtc}&toUtc={toUtc}&page={page}&pageSize={pageSize}
+```
+所有筛选参数可选：按用户、订单状态（Pending/Paid/.../Cancelled）、时间范围过滤。响应 `200`：`data` 为 `PagedResult`，`items` 含 `orderId`、`userId`、`status`、`price`、`orderTimestamp`、`itemCount`。只读查询，不修改订单，不影响已支付订单的价格快照。

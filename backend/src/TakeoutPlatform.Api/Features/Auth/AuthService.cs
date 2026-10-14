@@ -90,6 +90,10 @@ public sealed class AuthService
         if (verification == PasswordVerificationResult.Failed)
             return null;
 
+        // 停用账号即使凭据正确也拒绝登录（Sprint 4 member2：管理员停用账号）。
+        if (!account.IsActive)
+            return null;
+
         if (verification == PasswordVerificationResult.SuccessRehashNeeded)
         {
             account.PasswordHash = _passwordHasher.HashPassword(account, request.Password);

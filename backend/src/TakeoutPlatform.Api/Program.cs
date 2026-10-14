@@ -80,6 +80,11 @@ builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.MerchantFulfillmen
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Rider.RiderDeliveryService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<InventoryService>();
+// Audit: member2 默认注册 NullAuditLogger，member3 的真实实现落地后替换此行。
+builder.Services.AddScoped<TakeoutPlatform.Api.Features.Audit.IAuditLogger, TakeoutPlatform.Api.Features.Audit.NullAuditLogger>();
+builder.Services.AddScoped<TakeoutPlatform.Api.Features.Admin.AdminAccountService>();
+builder.Services.AddScoped<TakeoutPlatform.Api.Features.Admin.AdminCouponService>();
+builder.Services.AddScoped<TakeoutPlatform.Api.Features.Admin.AdminOrderService>();
 builder.Services.AddSingleton<IDiscountStrategy, MerchantDiscountStrategy>();
 builder.Services.AddSingleton<IDiscountStrategy, PlatformCouponDiscountStrategy>();
 

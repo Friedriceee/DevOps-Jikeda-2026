@@ -50,7 +50,8 @@ public class AuthServiceTests : ServiceTestBase
 
         Assert.That((await service.RegisterCustomerAsync(first, CancellationToken.None)).Conflict, Is.False);
         Assert.That((await service.RegisterCustomerAsync(second, CancellationToken.None)).Conflict, Is.True);
-        Assert.That(db.Accounts.Count(), Is.EqualTo(1));
+        // 只统计顾客账号，排除种子的 Administrator 账号（member2 Sprint 4 新增）。
+        Assert.That(db.Accounts.Count(a => a.Role == AccountRole.Customer), Is.EqualTo(1));
     }
 
     [Test]
