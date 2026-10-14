@@ -60,6 +60,7 @@ public class MerchantFulfillmentServiceTests : ServiceTestBase
         Assert.That(ownOrders, Has.Count.EqualTo(1));
         Assert.That(ownOrders[0].OrderId, Is.EqualTo(seeded.OrderId));
         Assert.That(ownOrders[0].Status, Is.EqualTo("Confirmed"));
+        Assert.That(ownOrders[0].OverallStatus, Is.EqualTo("Paid"));
         Assert.That(ownOrders[0].Items.Single().DishName, Is.EqualTo("Merchant fulfilment dish"));
         Assert.That(otherOrders, Is.Empty);
     }
@@ -78,6 +79,7 @@ public class MerchantFulfillmentServiceTests : ServiceTestBase
         Assert.That(accepted.Order?.Status, Is.EqualTo("Accepted"));
         Assert.That(preparing.Order?.Status, Is.EqualTo("Preparing"));
         Assert.That(ready.Order?.Status, Is.EqualTo("ReadyForDelivery"));
+        Assert.That(ready.Order?.OverallStatus, Is.EqualTo("ReadyForDelivery"));
 
         await using var verify = CreateContext();
         Assert.That(

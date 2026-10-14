@@ -33,6 +33,14 @@ function statusLabel(status) {
   return status === 'ReadyForDelivery' ? 'Ready for delivery' : status
 }
 
+function readyNote(overallStatus) {
+  if (['Paid', 'Accepted', 'Preparing'].includes(overallStatus)) return 'Waiting for other restaurants'
+  if (overallStatus === 'ReadyForDelivery') return 'Waiting for a courier'
+  if (['Assigned', 'PickedUp', 'Delivering'].includes(overallStatus)) return 'Courier delivery in progress'
+  if (overallStatus === 'Completed') return 'Delivery completed'
+  return 'Waiting for order coordination'
+}
+
 async function loadOrders() {
   loading.value = true
   try {
@@ -145,7 +153,7 @@ onMounted(loadOrders)
               :loading="updatingOrderId === order.orderId"
               @click="applyTransition(order, 'MarkReady', 'Order is ready for delivery.')"
             >Mark ready for delivery</el-button>
-            <span v-else class="complete-note">Waiting for a courier</span>
+            <span v-else class="complete-note">{{ readyNote(order.overallStatus) }}</span>
           </div>
         </div>
       </el-card>

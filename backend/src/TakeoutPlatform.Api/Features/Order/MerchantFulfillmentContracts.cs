@@ -18,6 +18,7 @@ public sealed record MerchantOrderResponse(
     int CustomerId,
     DateTime OrderTimestamp,
     string Status,
+    string OverallStatus,
     string? RejectionReason,
     decimal MerchantSubtotal,
     int ItemCount,

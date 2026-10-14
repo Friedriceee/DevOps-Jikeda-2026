@@ -267,6 +267,7 @@ public sealed class MerchantFulfillmentService
             order.OrderUser?.UserId ?? 0,
             order.OrderTimestamp,
             (fulfillment?.Status ?? MerchantFulfillmentStatus.Confirmed).ToString(),
+            order.Status.ToString(),
             fulfillment?.RejectionReason,
             items.Sum(item => item.LineTotal),
             items.Sum(item => item.Quantity),

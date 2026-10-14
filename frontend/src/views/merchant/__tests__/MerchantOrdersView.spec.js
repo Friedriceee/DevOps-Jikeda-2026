@@ -24,6 +24,7 @@ const confirmedOrder = {
   customerId: 9,
   orderTimestamp: '2026-10-10T08:00:00Z',
   status: 'Confirmed',
+  overallStatus: 'Paid',
   rejectionReason: null,
   merchantSubtotal: 30,
   itemCount: 2,
@@ -95,5 +96,19 @@ describe('MerchantOrdersView', () => {
 
     expect(mocks.transitionMerchantOrder).toHaveBeenCalledWith(42, 'Reject', 'Ingredient unavailable.')
     expect(wrapper.text()).toContain('Ingredient unavailable.')
+  })
+
+  it('distinguishes another restaurant still preparing from a courier wait', async () => {
+    mocks.listMerchantOrders.mockResolvedValue([
+      { ...confirmedOrder, orderId: 43, status: 'ReadyForDelivery', overallStatus: 'Paid' },
+      { ...confirmedOrder, orderId: 44, status: 'ReadyForDelivery', overallStatus: 'ReadyForDelivery' },
+    ])
+    const wrapper = shallowMount(MerchantOrdersView, {
+      global: { stubs, directives: { loading: () => {} } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Waiting for other restaurants')
+    expect(wrapper.text()).toContain('Waiting for a courier')
   })
 })
