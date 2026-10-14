@@ -131,6 +131,13 @@ public static class StagingSeeder
             };
             db.Accounts.Add(account);
         }
+        else
+        {
+            // Keep the deterministic demo login usable even when the profile
+            // was created under a legacy staging username.
+            account.Username = username;
+            account.NormalizedUsername = normalized;
+        }
         account.Role = role;
         account.ProfileId = profileId;
         account.IsActive = true;

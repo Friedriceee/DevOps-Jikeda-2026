@@ -64,6 +64,39 @@ public class StagingSeederTests
     }
 
     [Test]
+    public async Task Renames_a_legacy_second_merchant_account_to_the_documented_demo_login()
+    {
+        await using var provider = Services(enabled: true, Password);
+        using (var scope = provider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<Account>>();
+            var legacy = new Account
+            {
+                Username = "cartdemo-salad",
+                NormalizedUsername = "CARTDEMO-SALAD",
+                Role = AccountRole.Merchant,
+                ProfileId = StagingSeeder.SecondMerchantId,
+                CreatedAtUtc = DateTime.UtcNow,
+                IsActive = true,
+            };
+            legacy.PasswordHash = hasher.HashPassword(legacy, "legacy-password");
+            db.Accounts.Add(legacy);
+            await db.SaveChangesAsync();
+        }
+
+        await StagingSeeder.RunAsync(provider);
+
+        using var verifyScope = provider.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var secondMerchant = await verifyDb.Accounts.SingleAsync(
+            account => account.Role == AccountRole.Merchant
+                && account.ProfileId == StagingSeeder.SecondMerchantId);
+        Assert.That(secondMerchant.Username, Is.EqualTo(StagingSeeder.SecondMerchantUsername));
+        Assert.That(secondMerchant.NormalizedUsername, Is.EqualTo("SPRINT3MERCHANT"));
+    }
+
+    [Test]
     public async Task Gives_the_demo_merchant_a_menu_and_an_offer()
     {
         await using var provider = Services(enabled: true, Password);
