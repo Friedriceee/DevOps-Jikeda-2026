@@ -70,12 +70,6 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
-        db.Merchants.Add(new Merchant
-        {
-            Id = 2,
-            Name = "Second Test Merchant",
-        });
-        db.SaveChanges();
     }
 
     protected override void Dispose(bool disposing)

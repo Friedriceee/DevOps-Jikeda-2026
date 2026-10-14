@@ -41,9 +41,6 @@ public abstract class ServiceTestBase
         // 依据实体模型创建表结构（不走 EF 迁移，直接建表，适合测试）。
         context.Database.EnsureCreated();
 
-        // 追加一个第二商家，用于测试"数据只属于对应商家"的边界。
-        context.Merchants.Add(new Merchant { Id = OtherMerchantId, Name = "Second Merchant" });
-        context.SaveChanges();
     }
 
     [TearDown]

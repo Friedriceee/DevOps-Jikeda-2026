@@ -56,7 +56,8 @@ public class StagingSeederTests
         Assert.That(accounts.Select(a => a.Role), Does.Contain(AccountRole.Customer));
         Assert.That(accounts.Select(a => a.Role), Does.Contain(AccountRole.Merchant));
         Assert.That(accounts.Select(a => a.Role), Does.Contain(AccountRole.Rider));
-        Assert.That(accounts.Single(a => a.Role == AccountRole.Merchant).ProfileId, Is.EqualTo(StagingSeeder.DemoMerchantId));
+        Assert.That(accounts.Single(a => a.Username == StagingSeeder.MerchantUsername).ProfileId, Is.EqualTo(StagingSeeder.DemoMerchantId));
+        Assert.That(accounts.Single(a => a.Username == StagingSeeder.SecondMerchantUsername).ProfileId, Is.EqualTo(StagingSeeder.SecondMerchantId));
         Assert.That(accounts.Single(a => a.Role == AccountRole.Rider).ProfileId, Is.EqualTo(StagingSeeder.DemoRiderId));
         Assert.That(accounts.All(a => hasher.VerifyHashedPassword(a, a.PasswordHash, Password) != PasswordVerificationResult.Failed));
         Assert.That(accounts.All(a => a.PasswordHash != Password), "passwords must be stored hashed");
@@ -72,8 +73,9 @@ public class StagingSeederTests
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         Assert.That(await db.Dishes.CountAsync(d => d.MerchantId == StagingSeeder.DemoMerchantId), Is.GreaterThan(0));
+        Assert.That(await db.Dishes.CountAsync(d => d.MerchantId == StagingSeeder.SecondMerchantId), Is.GreaterThan(0));
         Assert.That(await db.Dishes.AllAsync(d => d.Inventory > 100));
-        Assert.That(await db.SpecialOffers.CountAsync(), Is.EqualTo(1));
+        Assert.That(await db.SpecialOffers.CountAsync(), Is.EqualTo(2));
     }
 
     [Test]
@@ -86,9 +88,9 @@ public class StagingSeederTests
         using var scope = provider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        Assert.That(await db.Accounts.CountAsync(), Is.EqualTo(4));
+        Assert.That(await db.Accounts.CountAsync(), Is.EqualTo(5));
         Assert.That(await db.Users.CountAsync(u => u.UserName == "Demo Customer"), Is.EqualTo(1));
-        Assert.That(await db.SpecialOffers.CountAsync(), Is.EqualTo(1));
+        Assert.That(await db.SpecialOffers.CountAsync(), Is.EqualTo(2));
     }
 
     [Test]

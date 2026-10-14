@@ -98,6 +98,19 @@ public class AppDbContext : DbContext
                 Id = 1,
                 Name = "Demo Merchant",
             });
+
+            // A second deterministic staging merchant lets the checkout and
+            // fulfilment flow be exercised with a genuine multi-restaurant
+            // order.  The login for this profile is created by StagingSeeder
+            // so its password still comes from the deployment secret.
+            entity.HasData(new Merchant
+            {
+                Id = 2,
+                Name = "Sprint 3 Merchant",
+                Address = "Campus North Gate",
+                Contact = "13800000002",
+                DishType = "Noodles",
+            });
         });
 
         modelBuilder.Entity<Account>(entity =>
