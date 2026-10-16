@@ -385,6 +385,16 @@ namespace TakeoutPlatform.Api.Migrations
                             CouponType = 0,
                             Name = "Demo Merchant",
                             Wallet = 0m
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Address = "Campus North Gate",
+                            Contact = "13800000002",
+                            CouponType = 0,
+                            DishType = "Noodles",
+                            Name = "Sprint 3 Merchant",
+                            Wallet = 0m
                         });
                 });
 

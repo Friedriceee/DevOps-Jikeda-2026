@@ -21,16 +21,18 @@ public sealed class SeedOptions
 
 /// <summary>
 /// Demo data so a freshly migrated staging database can be logged into and smoke-tested:
-/// one customer, the existing demo merchant (id 1), the seeded demo rider (id 1) and a
-/// small menu. It is idempotent (safe on every start) and refuses to run in Production.
+/// one customer, two demo merchants (ids 1 and 2), the seeded demo rider (id 1) and
+/// small menus. It is idempotent (safe on every start) and refuses to run in Production.
 /// </summary>
 public static class StagingSeeder
 {
     public const string CustomerUsername = "demo_customer";
     public const string MerchantUsername = "demo_merchant";
+    public const string SecondMerchantUsername = "sprint3merchant";
     public const string RiderUsername = "demo_rider";
     public const string AdministratorUsername = "admin";
     public const int DemoMerchantId = 1;
+    public const int SecondMerchantId = 2;
     public const int DemoRiderId = 1;
 
     public static async Task RunAsync(IServiceProvider services, CancellationToken cancellationToken = default)
@@ -64,6 +66,7 @@ public static class StagingSeeder
 
         await EnsureAccountAsync(db, hasher, time, options.Password, CustomerUsername, AccountRole.Customer, customer.Id, cancellationToken);
         await EnsureAccountAsync(db, hasher, time, options.Password, MerchantUsername, AccountRole.Merchant, DemoMerchantId, cancellationToken);
+        await EnsureAccountAsync(db, hasher, time, options.Password, SecondMerchantUsername, AccountRole.Merchant, SecondMerchantId, cancellationToken);
         await EnsureAccountAsync(db, hasher, time, options.Password, RiderUsername, AccountRole.Rider, DemoRiderId, cancellationToken);
         await EnsureAccountAsync(db, hasher, time, options.Password, AdministratorUsername, AccountRole.Administrator, 0, cancellationToken);
 
@@ -75,12 +78,24 @@ public static class StagingSeeder
                 new Dish { MerchantId = DemoMerchantId, Name = "Iced Lemon Tea", Category = "Drinks", Price = 4.50m, Inventory = 500 });
         }
 
+        if (!await db.Dishes.AnyAsync(dish => dish.MerchantId == SecondMerchantId, cancellationToken))
+        {
+            db.Dishes.AddRange(
+                new Dish { MerchantId = SecondMerchantId, Name = "Sichuan Beef Noodles", Category = "Noodles", Price = 16.00m, Inventory = 500 },
+                new Dish { MerchantId = SecondMerchantId, Name = "Tofu Vegetable Bowl", Category = "Rice", Price = 13.00m, Inventory = 500 },
+                new Dish { MerchantId = SecondMerchantId, Name = "Jasmine Tea", Category = "Drinks", Price = 3.50m, Inventory = 500 });
+        }
+
         if (!await db.SpecialOffers.AnyAsync(offer => offer.MerchantId == DemoMerchantId, cancellationToken))
             db.SpecialOffers.Add(new SpecialOffer { MerchantId = DemoMerchantId, MinPrice = 50m, AmountRemission = 8m });
 
+        if (!await db.SpecialOffers.AnyAsync(offer => offer.MerchantId == SecondMerchantId, cancellationToken))
+            db.SpecialOffers.Add(new SpecialOffer { MerchantId = SecondMerchantId, MinPrice = 40m, AmountRemission = 5m });
+
         await db.SaveChangesAsync(cancellationToken);
-        logger.LogInformation("Staging demo data is in place (accounts: {Customer}, {Merchant}, {Rider}, {Administrator}).",
-            CustomerUsername, MerchantUsername, RiderUsername, AdministratorUsername);
+        logger.LogInformation(
+            "Staging demo data is in place (accounts: {Customer}, {Merchant}, {SecondMerchant}, {Rider}, {Administrator}).",
+            CustomerUsername, MerchantUsername, SecondMerchantUsername, RiderUsername, AdministratorUsername);
     }
 
     private static async Task EnsureAccountAsync(
@@ -96,6 +111,16 @@ public static class StagingSeeder
         var normalized = AuthService.NormalizeUsername(username);
         var account = await db.Accounts.SingleOrDefaultAsync(
             item => item.NormalizedUsername == normalized, cancellationToken);
+        // A previous staging run may have created the profile account under a
+        // different demo username. Reuse that role/profile row instead of
+        // violating the unique (Role, ProfileId) constraint when introducing
+        // the deterministic second merchant login.
+        if (account is null)
+        {
+            account = await db.Accounts.SingleOrDefaultAsync(
+                item => item.Role == role && item.ProfileId == profileId,
+                cancellationToken);
+        }
         if (account is null)
         {
             account = new Account
@@ -105,6 +130,13 @@ public static class StagingSeeder
                 CreatedAtUtc = time.GetUtcNow().UtcDateTime,
             };
             db.Accounts.Add(account);
+        }
+        else
+        {
+            // Keep the deterministic demo login usable even when the profile
+            // was created under a legacy staging username.
+            account.Username = username;
+            account.NormalizedUsername = normalized;
         }
         account.Role = role;
         account.ProfileId = profileId;

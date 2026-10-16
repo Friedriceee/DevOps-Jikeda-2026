@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using TakeoutPlatform.Api.Features.Merchant;
 using TakeoutPlatform.Api.Features.Order;
+using TakeoutPlatform.Api.Features.Rider;
 
 namespace TakeoutPlatform.Api.Tests;
 
@@ -88,6 +89,47 @@ public class MerchantFulfillmentServiceTests : ServiceTestBase
     }
 
     [Test]
+    public async Task Multi_merchant_order_stays_hidden_from_riders_until_every_merchant_is_ready()
+    {
+        var orderId = await SeedMultiMerchantOrderAsync();
+
+        await using var firstMerchantContext = CreateContext();
+        var firstMerchant = new MerchantFulfillmentService(firstMerchantContext, TimeProvider.System);
+        await TransitionFor(firstMerchant, orderId, MerchantId, "Accept");
+        await TransitionFor(firstMerchant, orderId, MerchantId, "StartPreparing");
+        var firstReady = await TransitionFor(firstMerchant, orderId, MerchantId, "MarkReady");
+
+        Assert.That(firstReady.Order?.Status, Is.EqualTo("ReadyForDelivery"));
+        Assert.That(firstReady.Order?.OverallStatus, Is.EqualTo("Paid"));
+
+        await using var riderBeforeSecondMerchantContext = CreateContext();
+        var riderBeforeSecondMerchant = new RiderDeliveryService(
+            riderBeforeSecondMerchantContext,
+            TimeProvider.System);
+        Assert.That(
+            await riderBeforeSecondMerchant.ListAvailableAsync(CancellationToken.None),
+            Is.Empty,
+            "A rider must not receive a multi-merchant order while one restaurant is still preparing it.");
+
+        await using var secondMerchantContext = CreateContext();
+        var secondMerchant = new MerchantFulfillmentService(secondMerchantContext, TimeProvider.System);
+        await TransitionFor(secondMerchant, orderId, OtherMerchantId, "Accept");
+        await TransitionFor(secondMerchant, orderId, OtherMerchantId, "StartPreparing");
+        var allReady = await TransitionFor(secondMerchant, orderId, OtherMerchantId, "MarkReady");
+
+        Assert.That(allReady.Order?.OverallStatus, Is.EqualTo("ReadyForDelivery"));
+
+        await using var riderAfterSecondMerchantContext = CreateContext();
+        var riderAfterSecondMerchant = new RiderDeliveryService(
+            riderAfterSecondMerchantContext,
+            TimeProvider.System);
+        Assert.That(
+            (await riderAfterSecondMerchant.ListAvailableAsync(CancellationToken.None))
+                .Select(item => item.OrderId),
+            Does.Contain(orderId));
+    }
+
+    [Test]
     public async Task TransitionAsync_rejects_an_invalid_state_change()
     {
         var seeded = await SeedConfirmedOrderAsync();
@@ -156,9 +198,67 @@ public class MerchantFulfillmentServiceTests : ServiceTestBase
         MerchantFulfillmentService service,
         int orderId,
         string action) =>
+        TransitionFor(service, orderId, MerchantId, action);
+
+    private static Task<MerchantTransitionResult> TransitionFor(
+        MerchantFulfillmentService service,
+        int orderId,
+        int merchantId,
+        string action) =>
         service.TransitionAsync(
             orderId,
-            MerchantId,
+            merchantId,
             new MerchantOrderTransitionRequest { Action = action },
             CancellationToken.None);
+
+    private async Task<int> SeedMultiMerchantOrderAsync()
+    {
+        await using var context = CreateContext();
+        var firstDish = new Dish
+        {
+            MerchantId = MerchantId,
+            Name = "First merchant dish",
+            Price = 12m,
+            Inventory = 10,
+        };
+        var secondDish = new Dish
+        {
+            MerchantId = OtherMerchantId,
+            Name = "Second merchant dish",
+            Price = 14m,
+            Inventory = 10,
+        };
+        context.Dishes.AddRange(firstDish, secondDish);
+        await context.SaveChangesAsync();
+
+        var orderService = new OrderService(context);
+        var created = await orderService.CreateAsync(
+            new CreateOrderRequest
+            {
+                UserId = 1,
+                AddressId = 1,
+                Price = firstDish.Price + secondDish.Price,
+                ShoppingCart =
+                [
+                    new CreateOrderRequest.CartItem
+                    {
+                        MerchantId = MerchantId,
+                        DishId = firstDish.Id,
+                        DishNum = 1,
+                    },
+                    new CreateOrderRequest.CartItem
+                    {
+                        MerchantId = OtherMerchantId,
+                        DishId = secondDish.Id,
+                        DishNum = 1,
+                    },
+                ],
+            },
+            CancellationToken.None);
+
+        var order = await context.Orders.SingleAsync(item => item.Id == created.Order!.Id);
+        order.Status = OrderStatus.Paid;
+        await context.SaveChangesAsync();
+        return order.Id;
+    }
 }
