@@ -80,6 +80,7 @@ builder.Services.AddScoped<AddressService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.OrderService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Order.MerchantFulfillmentService>();
 builder.Services.AddScoped<TakeoutPlatform.Api.Features.Rider.RiderDeliveryService>();
+builder.Services.AddScoped<TakeoutPlatform.Api.Features.Rider.RiderRegistrationService>();
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));

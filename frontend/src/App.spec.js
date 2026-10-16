@@ -60,4 +60,22 @@ describe('App authentication controls', () => {
     expect(mocks.push).toHaveBeenCalledWith({ name: 'home' })
     expect(mocks.messageSuccess).toHaveBeenCalledWith('You have been signed out.')
   })
+
+  it.each(['Merchant', 'Rider'])('hides customer ordering navigation for %s accounts', (role) => {
+    useAuthStore().setSession({ accessToken: 'jwt-token', role, displayName: role })
+    const wrapper = mount(App, { global: { stubs } })
+    const labels = wrapper.findAll('button').map((button) => button.text())
+
+    expect(labels).not.toContain('Explore')
+    expect(labels).not.toContain('Cart')
+  })
+
+  it('keeps Explore and Cart available to a customer', () => {
+    useAuthStore().setSession({ accessToken: 'jwt-token', role: 'Customer', displayName: 'Alice' })
+    const wrapper = mount(App, { global: { stubs } })
+    const labels = wrapper.findAll('button').map((button) => button.text())
+
+    expect(labels).toContain('Explore')
+    expect(labels).toContain('Cart')
+  })
 })

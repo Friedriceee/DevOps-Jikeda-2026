@@ -15,7 +15,10 @@ export function addBearerToken(config, token) {
 }
 
 export function isAnonymousAuthRequest(url = '') {
-  return url === '/auth/login' || url === '/auth/customer/register'
+  return url === '/auth/login'
+    || url === '/auth/customer/register'
+    || url === '/merchant/register'
+    || url === '/rider/register'
 }
 
 export function unwrapApiResponse(response, notify = () => {}) {

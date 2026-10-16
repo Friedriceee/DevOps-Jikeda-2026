@@ -2,6 +2,8 @@ export const routes = [
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
   { path: '/login', name: 'login', component: () => import('@/views/auth/LoginView.vue') },
   { path: '/register', name: 'register', component: () => import('@/views/auth/RegisterView.vue') },
+  { path: '/register/merchant', name: 'register-merchant', component: () => import('@/views/auth/RegisterMerchantView.vue') },
+  { path: '/register/rider', name: 'register-rider', component: () => import('@/views/auth/RegisterRiderView.vue') },
   {
     path: '/admin',
     name: 'admin-dashboard',

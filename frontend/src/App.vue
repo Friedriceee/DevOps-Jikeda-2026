@@ -18,7 +18,7 @@ async function logout() {
     <el-header class="app-header">
       <button class="brand" type="button" @click="router.push({ name: 'home' })"><span>●</span> Plateful</button>
       <nav class="main-nav" aria-label="Main navigation">
-        <el-button link @click="router.push({ name: 'customer-merchants' })">Explore</el-button>
+        <el-button v-if="!authStore.isAuthenticated || authStore.role === 'Customer'" link @click="router.push({ name: 'customer-merchants' })">Explore</el-button>
         <el-button v-if="authStore.role === 'Customer'" link @click="router.push({ name: 'customer-cart' })">Cart</el-button>
         <el-button v-if="authStore.role === 'Customer'" link @click="router.push({ name: 'user-orders' })">Orders</el-button>
         <template v-if="authStore.role === 'Merchant'">

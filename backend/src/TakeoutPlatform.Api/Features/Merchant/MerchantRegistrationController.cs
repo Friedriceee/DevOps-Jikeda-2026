@@ -19,11 +19,11 @@ public sealed class MerchantRegistrationController : ControllerBase
             string.IsNullOrWhiteSpace(request.MerchantName) ||
             string.IsNullOrWhiteSpace(request.MerchantAddress) ||
             string.IsNullOrWhiteSpace(request.Contact))
-            return BadRequest(ApiResult<MerchantRegistrationResponse>.Fail("必填字段不能为空"));
+            return BadRequest(ApiResult<MerchantRegistrationResponse>.Fail("Required fields cannot be empty."));
 
         var result = await _service.RegisterAsync(request, cancellationToken);
         return result.Conflict
-            ? Conflict(ApiResult<MerchantRegistrationResponse>.Fail("用户名已存在"))
+            ? Conflict(ApiResult<MerchantRegistrationResponse>.Fail("Username already exists."))
             : StatusCode(StatusCodes.Status201Created,
                 ApiResult<MerchantRegistrationResponse>.Ok(result.Merchant!));
     }

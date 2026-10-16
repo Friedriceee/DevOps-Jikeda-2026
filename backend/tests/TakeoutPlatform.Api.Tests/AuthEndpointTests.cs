@@ -70,6 +70,30 @@ public class AuthEndpointTests
         Assert.That(body?.Data, Is.Null);
     }
 
+    [Test]
+    public async Task Rider_can_register_and_login_with_the_rider_role()
+    {
+        var register = await _client.PostAsJsonAsync("/api/rider/register", new
+        {
+            username = "rider-new",
+            password = "SecurePassword123",
+            name = "Rider New",
+            phoneNumber = "13800000002",
+            zone = "ZoneA",
+            capacity = 3,
+        });
+        Assert.That(register.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+
+        var login = await _client.PostAsJsonAsync("/api/auth/login", new
+        {
+            username = "rider-new",
+            password = "SecurePassword123",
+        });
+        var body = await login.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>();
+        Assert.That(login.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(body?.Data?.Role, Is.EqualTo("Rider"));
+    }
+
     private static object CustomerPayload() => new
     {
         username = "customer-a",

@@ -54,7 +54,7 @@ async function submit() {
   <section class="login-page">
     <el-card class="login-card" shadow="never">
       <template #header>
-        <div class="login-title">Customer Login</div>
+        <div class="login-title">Account Login</div>
       </template>
 
       <el-form label-position="top" @submit.prevent="submit">
@@ -74,8 +74,10 @@ async function submit() {
           Log In
         </el-button>
         <div class="register-link">
-          Don't have an account?
+          Create an account:
           <el-button link type="primary" @click="router.push({ name: 'register' })">Register now</el-button>
+          <el-button link type="primary" @click="router.push({ name: 'register-merchant' })">Restaurant</el-button>
+          <el-button link type="primary" @click="router.push({ name: 'register-rider' })">Rider</el-button>
         </div>
       </el-form>
     </el-card>

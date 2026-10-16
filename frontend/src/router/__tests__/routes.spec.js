@@ -5,6 +5,8 @@ describe('application route access rules', () => {
   it('exposes public login and customer registration routes', () => {
     expect(routes.find((route) => route.name === 'login').path).toBe('/login')
     expect(routes.find((route) => route.name === 'register').path).toBe('/register')
+    expect(routes.find((route) => route.name === 'register-merchant').path).toBe('/register/merchant')
+    expect(routes.find((route) => route.name === 'register-rider').path).toBe('/register/rider')
   })
 
   it('protects merchant dish management with the Merchant role', () => {

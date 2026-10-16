@@ -106,6 +106,7 @@ async function submit() {
           Already have an account?
           <el-button link type="primary" @click="router.push({ name: 'login' })">Back to login</el-button>
         </div>
+        <div class="login-link">Register as a <el-button link type="primary" @click="router.push({ name: 'register-merchant' })">restaurant</el-button> or <el-button link type="primary" @click="router.push({ name: 'register-rider' })">rider</el-button>.</div>
       </el-form>
     </el-card>
   </section>
