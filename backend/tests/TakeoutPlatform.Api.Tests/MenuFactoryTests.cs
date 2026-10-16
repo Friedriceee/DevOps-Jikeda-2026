@@ -29,29 +29,29 @@ public class MenuFactoryTests
     [TestCase("Bundle", 1)]
     [TestCase("Promotional", 2)]
     public void Invalid_type_or_type_specific_settings_are_rejected(string type, int? size) =>
-        Assert.Throws<ArgumentException>(() => MenuItemFactory.For(type).Create(new(size)));
+        Assert.Throws<ArgumentException>((Action)(() => MenuItemFactory.For(type).Create(new(size))));
 
     [Test]
-    public void Bundle_rejects_promotion_dates() => Assert.Throws<ArgumentException>(() =>
-        new BundleMenuItemFactory().Create(new(2, Start, Start.AddDays(1))));
+    public void Bundle_rejects_promotion_dates() => Assert.Throws<ArgumentException>((Action)(() =>
+        new BundleMenuItemFactory().Create(new(2, Start, Start.AddDays(1)))));
 
     [Test]
-    public void Promotion_rejects_non_increasing_dates() => Assert.Throws<ArgumentException>(() =>
-        new PromotionalMenuItemFactory().Create(new(null, Start, Start)));
+    public void Promotion_rejects_non_increasing_dates() => Assert.Throws<ArgumentException>((Action)(() =>
+        new PromotionalMenuItemFactory().Create(new(null, Start, Start))));
 
     [Test]
     public void Promotion_is_available_at_start_but_not_at_end_and_normalizes_UTC()
     {
         var item = new PromotionalMenuItemFactory().Create(new(null,
             Start.ToOffset(TimeSpan.FromHours(8)), Start.AddHours(1).ToOffset(TimeSpan.FromHours(8))));
-        Assert.Multiple(() =>
+        Assert.Multiple((Action)(() =>
         {
             Assert.That(item.IsAvailableAt(Start.AddTicks(-1)), Is.False);
             Assert.That(item.IsAvailableAt(Start), Is.True);
             Assert.That(item.IsAvailableAt(Start.AddMinutes(30)), Is.True);
             Assert.That(item.IsAvailableAt(Start.AddHours(1)), Is.False);
             Assert.That(item.Options.PromotionStartsAtUtc!.Value.Offset, Is.EqualTo(TimeSpan.Zero));
-        });
+        }));
     }
 
     [Test]

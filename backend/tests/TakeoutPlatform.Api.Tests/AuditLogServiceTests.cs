@@ -21,12 +21,12 @@ public class AuditLogServiceTests : ServiceTestBase
             null, null, 1, 20, CancellationToken.None);
 
         Assert.That(page.TotalCount, Is.EqualTo(1));
-        Assert.Multiple(() =>
+        Assert.Multiple((Action)(() =>
         {
             Assert.That(page.Items[0].Actor, Is.EqualTo("admin"));
             Assert.That(page.Items[0].TargetId, Is.EqualTo("12"));
             Assert.That(page.Items[0].CorrelationId, Is.EqualTo("trace-123"));
-        });
+        }));
     }
 
     [Test]
@@ -56,7 +56,7 @@ public class AuditLogServiceTests : ServiceTestBase
         var log = await db.AuditLogs.SingleAsync();
         log.Result = "Changed";
 
-        var error = Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
+        var error = Assert.ThrowsAsync<InvalidOperationException>((Func<Task>)(() => db.SaveChangesAsync()));
         Assert.That(error!.Message, Does.Contain("append-only"));
     }
 
@@ -66,7 +66,7 @@ public class AuditLogServiceTests : ServiceTestBase
         using var db = CreateContext();
         var service = new AuditLogService(db);
         var invalid = Event(" ", "Account", "1");
-        Assert.ThrowsAsync<ArgumentException>(() => service.LogAsync(invalid, CancellationToken.None));
+        Assert.ThrowsAsync<ArgumentException>((Func<Task>)(() => service.LogAsync(invalid, CancellationToken.None)));
     }
 
     private static AuditEvent Event(string action, string targetType, string targetId) =>

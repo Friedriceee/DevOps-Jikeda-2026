@@ -51,13 +51,13 @@ public class AuditEndpointTests
 
         var response = await client.GetAsync("/api/admin/audit-logs?action=CouponCreated");
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedDto<AuditDto>>>();
-        Assert.Multiple(() =>
+        Assert.Multiple((Action)(() =>
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             Assert.That(body?.Data?.TotalCount, Is.EqualTo(1));
             Assert.That(body?.Data?.Items[0].Actor, Is.EqualTo("test-administrator"));
             Assert.That(body?.Data?.Items[0].CorrelationId, Is.Not.Empty);
-        });
+        }));
     }
 
     private sealed record ApiResponse<T>(bool Success, T? Data, string? Message);

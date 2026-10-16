@@ -32,13 +32,13 @@ public class InventoryServiceTests : ServiceTestBase
         await using var db = CreateContext();
         var first = await Service(db).ReserveAsync(order, [new(1, dish, 1), new(1, dish, 2)], Ct);
         var replay = await Service(db).ReserveAsync(order, [new(1, dish, 3)], Ct);
-        Assert.Multiple(() =>
+        Assert.Multiple((Action)(() =>
         {
             Assert.That(first.Outcome, Is.EqualTo(InventoryOutcome.Success));
             Assert.That(replay.Outcome, Is.EqualTo(InventoryOutcome.AlreadyReserved));
             Assert.That(db.Dishes.AsNoTracking().Single().Inventory, Is.EqualTo(2));
             Assert.That(db.InventoryReservations.AsNoTracking().Single().Quantity, Is.EqualTo(3));
-        });
+        }));
     }
 
     [Test]
@@ -190,8 +190,8 @@ public class InventoryServiceTests : ServiceTestBase
     {
         await Seed();
         await using var db = CreateContext();
-        Assert.ThrowsAsync<Microsoft.Data.Sqlite.SqliteException>(() => db.Dishes.ExecuteUpdateAsync(
-            setter => setter.SetProperty(dish => dish.Inventory, -1)));
+        Assert.ThrowsAsync<Microsoft.Data.Sqlite.SqliteException>((Func<Task>)(() => db.Dishes.ExecuteUpdateAsync(
+            setter => setter.SetProperty(dish => dish.Inventory, -1))));
     }
 
     [Test]
