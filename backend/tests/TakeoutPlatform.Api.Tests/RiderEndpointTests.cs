@@ -57,6 +57,16 @@ public class RiderEndpointTests
         db.SaveChanges();
 
         db.OrderUsers.Add(new OrderUser { OrderId = order.Id, UserId = 1 });
+        if (!db.Dishes.Any(item => item.Id == 901))
+            db.Dishes.Add(new TakeoutPlatform.Api.Features.Merchant.Dish { Id = 901, MerchantId = 1, Name = "Endpoint dish", Price = 50m, Inventory = 10 });
+        db.OrderDishes.Add(new OrderDish { OrderId = order.Id, MerchantId = 1, DishId = 901, DishNum = 1 });
+        db.MerchantOrderFulfillments.Add(new MerchantOrderFulfillment
+        {
+            OrderId = order.Id,
+            MerchantId = 1,
+            Status = MerchantFulfillmentStatus.ReadyForDelivery,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
         db.SaveChanges();
         return order.Id;
     }

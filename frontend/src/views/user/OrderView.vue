@@ -13,6 +13,25 @@ const loading = ref(false)
 
 const userId = computed(() => authStore.user?.profileId ?? null)
 
+function kitchenStatusText(status) {
+  return {
+    Confirmed: 'Waiting for restaurant',
+    Accepted: 'Accepted by restaurant',
+    Preparing: 'Preparing',
+    ReadyForDelivery: 'Ready for pickup',
+    Rejected: 'Rejected',
+  }[status] ?? status
+}
+
+function deliveryStatusText(order) {
+  return {
+    Assigned: 'Courier assigned',
+    PickedUp: 'Picked up',
+    Delivering: 'Out for delivery',
+    Completed: 'Delivered',
+  }[order.deliveryStatus] ?? orderStatusText(order.status)
+}
+
 async function loadOrders() {
   loading.value = true
   try {
@@ -58,8 +77,14 @@ onMounted(loadOrders)
         <el-table-column label="Amount" width="130">
           <template #default="scope">{{ formatYuan(scope.row.price) }}</template>
         </el-table-column>
-        <el-table-column label="Status" width="140">
-          <template #default="scope">{{ orderStatusText(scope.row.status) }}</template>
+        <el-table-column label="Kitchen" width="150">
+          <template #default="scope">{{ kitchenStatusText(scope.row.fulfillmentStatus) }}</template>
+        </el-table-column>
+        <el-table-column label="Delivery" min-width="180">
+          <template #default="scope">
+            <div>{{ deliveryStatusText(scope.row) }}</div>
+            <small v-if="scope.row.riderName">{{ scope.row.riderName }} · {{ scope.row.riderPhone }}</small>
+          </template>
         </el-table-column>
         <el-table-column label="Actions" width="140" fixed="right">
           <template #default="scope">

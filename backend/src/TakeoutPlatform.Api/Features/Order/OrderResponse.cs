@@ -8,6 +8,10 @@ public sealed record OrderResponse(
     DateTime OrderTimestamp,
     OrderStatus Status,
     int NeedUtensils,
+    string FulfillmentStatus,
+    string? DeliveryStatus,
+    string? RiderName,
+    string? RiderPhone,
     IReadOnlyList<OrderDishResponse> Dishes);
 
 public sealed record OrderDishResponse(

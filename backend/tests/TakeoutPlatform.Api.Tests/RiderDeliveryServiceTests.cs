@@ -44,6 +44,16 @@ public class RiderDeliveryServiceTests : ServiceTestBase
         db.SaveChanges();
 
         db.OrderUsers.Add(new OrderUser { OrderId = order.Id, UserId = userId });
+        if (!db.Dishes.Any(item => item.Id == 900))
+            db.Dishes.Add(new TakeoutPlatform.Api.Features.Merchant.Dish { Id = 900, MerchantId = 1, Name = "Delivery dish", Price = 50m, Inventory = 10 });
+        db.OrderDishes.Add(new OrderDish { OrderId = order.Id, MerchantId = 1, DishId = 900, DishNum = 1 });
+        db.MerchantOrderFulfillments.Add(new MerchantOrderFulfillment
+        {
+            OrderId = order.Id,
+            MerchantId = 1,
+            Status = MerchantFulfillmentStatus.ReadyForDelivery,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
         db.SaveChanges();
         return order.Id;
     }
@@ -87,12 +97,52 @@ public class RiderDeliveryServiceTests : ServiceTestBase
             orderId = SeedReadyOrder(seed);
             var order = seed.Orders.Single(o => o.Id == orderId);
             order.Status = OrderStatus.Preparing; // 尚未就绪
+            seed.MerchantOrderFulfillments.Single(item => item.OrderId == orderId).Status = MerchantFulfillmentStatus.Confirmed;
             seed.SaveChanges();
         }
 
         await using var db = CreateContext();
         var result = await NewService(db).AcceptAsync(orderId, ActiveRiderId, CancellationToken.None);
         Assert.That(result.Outcome, Is.EqualTo(AcceptOutcome.NotReadyForDelivery));
+    }
+
+    [Test]
+    public async Task Rider_can_claim_after_merchant_accepts_but_cannot_pick_up_before_food_is_ready()
+    {
+        int orderId;
+        await using (var seed = CreateContext())
+        {
+            orderId = SeedReadyOrder(seed);
+            seed.Orders.Single(o => o.Id == orderId).Status = OrderStatus.Preparing;
+            seed.MerchantOrderFulfillments.Single(item => item.OrderId == orderId).Status =
+                MerchantFulfillmentStatus.Preparing;
+            seed.SaveChanges();
+        }
+
+        await using (var claim = CreateContext())
+        {
+            var accepted = await NewService(claim).AcceptAsync(orderId, ActiveRiderId, CancellationToken.None);
+            Assert.That(accepted.Outcome, Is.EqualTo(AcceptOutcome.Success));
+        }
+
+        await using (var earlyPickup = CreateContext())
+        {
+            var result = await NewService(earlyPickup).AdvanceAsync(
+                orderId, ActiveRiderId, new AdvanceDeliveryRequest { Action = "PickUp" }, CancellationToken.None);
+            Assert.That(result.Outcome, Is.EqualTo(AdvanceOutcome.InvalidTransition));
+        }
+
+        await using (var kitchen = CreateContext())
+        {
+            kitchen.MerchantOrderFulfillments.Single(item => item.OrderId == orderId).Status =
+                MerchantFulfillmentStatus.ReadyForDelivery;
+            kitchen.SaveChanges();
+        }
+
+        await using var pickup = CreateContext();
+        var pickedUp = await NewService(pickup).AdvanceAsync(
+            orderId, ActiveRiderId, new AdvanceDeliveryRequest { Action = "PickUp" }, CancellationToken.None);
+        Assert.That(pickedUp.Outcome, Is.EqualTo(AdvanceOutcome.Success));
     }
 
     [Test]

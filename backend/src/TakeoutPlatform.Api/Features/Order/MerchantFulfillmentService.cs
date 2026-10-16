@@ -66,12 +66,19 @@ public sealed class MerchantFulfillmentService
             .Where(dish => dish.MerchantId == merchantId && dishIds.Contains(dish.Id))
             .ToDictionaryAsync(dish => dish.Id, cancellationToken);
 
+        var deliveryRows = await _db.RiderDeliveries.AsNoTracking()
+            .Where(item => orderIds.Contains(item.OrderId))
+            .Join(_db.Riders.AsNoTracking(), delivery => delivery.RiderId, rider => rider.Id,
+                (delivery, rider) => new RiderInfo(delivery.OrderId, rider.Name, rider.PhoneNumber, delivery.Status))
+            .ToDictionaryAsync(item => item.OrderId, cancellationToken);
+
         return orders
             .Select(order => BuildResponse(
                 order,
                 merchantId,
                 fulfillments.GetValueOrDefault(order.Id),
-                dishes))
+                dishes,
+                deliveryRows.GetValueOrDefault(order.Id)))
             .ToList();
     }
 
@@ -133,6 +140,15 @@ public sealed class MerchantFulfillmentService
             .SingleOrDefault(item => item.MerchantId == merchantId);
         var currentStatus = fulfillment?.Status ?? MerchantFulfillmentStatus.Confirmed;
 
+        if (action == MerchantOrderAction.Reject
+            && await _db.RiderDeliveries.AnyAsync(item => item.OrderId == orderId, cancellationToken))
+        {
+            return new MerchantTransitionResult(
+                MerchantTransitionOutcome.InvalidTransition,
+                null,
+                "The order cannot be rejected after a courier has accepted the delivery.");
+        }
+
         if (!TryGetNextStatus(currentStatus, action, out var nextStatus))
         {
             return new MerchantTransitionResult(
@@ -181,7 +197,8 @@ public sealed class MerchantFulfillmentService
             }
         }
 
-        RecalculateOrderStatus(order, fulfillment);
+        var hasRider = await _db.RiderDeliveries.AnyAsync(item => item.OrderId == orderId, cancellationToken);
+        if (!hasRider) RecalculateOrderStatus(order, fulfillment);
         await _db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -244,7 +261,8 @@ public sealed class MerchantFulfillmentService
         Order order,
         int merchantId,
         MerchantOrderFulfillment? fulfillment,
-        IReadOnlyDictionary<int, Features.Merchant.Dish> dishes)
+        IReadOnlyDictionary<int, Features.Merchant.Dish> dishes,
+        RiderInfo? delivery)
     {
         var items = order.OrderDishes
             .Where(item => item.MerchantId == merchantId)
@@ -271,8 +289,13 @@ public sealed class MerchantFulfillmentService
             fulfillment?.RejectionReason,
             items.Sum(item => item.LineTotal),
             items.Sum(item => item.Quantity),
+            delivery?.Name,
+            delivery?.PhoneNumber,
+            delivery?.Status.ToString(),
             items);
     }
+
+    private sealed record RiderInfo(int OrderId, string Name, string? PhoneNumber, Features.Rider.DeliveryStatus Status);
 
     private enum MerchantOrderAction
     {

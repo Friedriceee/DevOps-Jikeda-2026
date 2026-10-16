@@ -22,6 +22,9 @@ public sealed record MerchantOrderResponse(
     string? RejectionReason,
     decimal MerchantSubtotal,
     int ItemCount,
+    string? RiderName,
+    string? RiderPhone,
+    string? DeliveryStatus,
     IReadOnlyList<MerchantOrderItemResponse> Items);
 
 public sealed record MerchantOrderItemResponse(

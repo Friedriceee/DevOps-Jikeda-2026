@@ -43,7 +43,7 @@ public sealed class RiderDeliveryService
         _timeProvider = timeProvider;
     }
 
-    /// <summary>可接任务池：状态为 ReadyForDelivery 且尚未被任何骑手接走的订单。</summary>
+    /// <summary>Task pool: every participating restaurant has accepted the order, and no rider owns it yet.</summary>
     public async Task<IReadOnlyList<AvailableDeliveryResponse>> ListAvailableAsync(
         CancellationToken cancellationToken)
     {
@@ -52,12 +52,33 @@ public sealed class RiderDeliveryService
             .Select(delivery => delivery.OrderId)
             .ToListAsync(cancellationToken);
 
-        var orders = await _db.Orders
+        var candidates = await _db.Orders
             .AsNoTracking()
-            .Where(order => order.Status == OrderStatus.ReadyForDelivery
+            .Where(order => (order.Status == OrderStatus.Accepted
+                    || order.Status == OrderStatus.Preparing
+                    || order.Status == OrderStatus.ReadyForDelivery)
                 && !takenOrderIds.Contains(order.Id))
             .OrderBy(order => order.OrderTimestamp)
             .ToListAsync(cancellationToken);
+
+        var candidateIds = candidates.Select(order => order.Id).ToArray();
+        var fulfillments = await _db.MerchantOrderFulfillments.AsNoTracking()
+            .Where(item => candidateIds.Contains(item.OrderId))
+            .ToListAsync(cancellationToken);
+        var merchantCounts = await _db.OrderDishes.AsNoTracking()
+            .Where(item => candidateIds.Contains(item.OrderId))
+            .GroupBy(item => item.OrderId)
+            .Select(group => new { OrderId = group.Key, Count = group.Select(item => item.MerchantId).Distinct().Count() })
+            .ToDictionaryAsync(item => item.OrderId, item => item.Count, cancellationToken);
+        var orders = candidates.Where(order =>
+        {
+            var states = fulfillments.Where(item => item.OrderId == order.Id).ToList();
+            return merchantCounts.GetValueOrDefault(order.Id) > 0
+                && states.Count == merchantCounts.GetValueOrDefault(order.Id)
+                && states.All(item => item.Status is MerchantFulfillmentStatus.Accepted
+                    or MerchantFulfillmentStatus.Preparing
+                    or MerchantFulfillmentStatus.ReadyForDelivery);
+        }).ToList();
 
         var result = new List<AvailableDeliveryResponse>();
         foreach (var order in orders)
@@ -72,7 +93,8 @@ public sealed class RiderDeliveryService
                 order.OrderTimestamp,
                 address?.Address ?? string.Empty,
                 address?.ContactName ?? string.Empty,
-                address?.PhoneNumber ?? string.Empty));
+                address?.PhoneNumber ?? string.Empty,
+                order.Status.ToString()));
         }
 
         return result;
@@ -98,7 +120,8 @@ public sealed class RiderDeliveryService
                 ? null
                 : await _db.UserAddresses.AsNoTracking()
                     .FirstOrDefaultAsync(a => a.Id == order.AddressId, cancellationToken);
-            result.Add(ToResponse(delivery, order?.Price ?? 0m, address));
+            result.Add(ToResponse(delivery, order?.Price ?? 0m, address,
+                await IsReadyForPickupAsync(delivery.OrderId, cancellationToken)));
         }
 
         return result;
@@ -129,8 +152,18 @@ public sealed class RiderDeliveryService
             if (existing)
                 return new AcceptResult(AcceptOutcome.AlreadyTaken, null, "订单已被接走");
 
-            if (order.Status != OrderStatus.ReadyForDelivery)
-                return new AcceptResult(AcceptOutcome.NotReadyForDelivery, null, "订单尚未可配送");
+            var merchantCount = await _db.OrderDishes
+                .Where(item => item.OrderId == orderId)
+                .Select(item => item.MerchantId)
+                .Distinct()
+                .CountAsync(cancellationToken);
+            var acceptedCount = await _db.MerchantOrderFulfillments
+                .CountAsync(item => item.OrderId == orderId
+                    && (item.Status == MerchantFulfillmentStatus.Accepted
+                        || item.Status == MerchantFulfillmentStatus.Preparing
+                        || item.Status == MerchantFulfillmentStatus.ReadyForDelivery), cancellationToken);
+            if (merchantCount == 0 || acceptedCount != merchantCount)
+                return new AcceptResult(AcceptOutcome.NotReadyForDelivery, null, "All restaurants must accept the order before a rider can claim it.");
 
             var rider = await _db.Riders.FirstOrDefaultAsync(r => r.Id == riderId, cancellationToken);
             if (rider is null)
@@ -161,7 +194,8 @@ public sealed class RiderDeliveryService
             await _db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
-            return new AcceptResult(AcceptOutcome.Success, ToResponse(delivery, order.Price, address), null);
+            return new AcceptResult(AcceptOutcome.Success, ToResponse(delivery, order.Price, address,
+                await IsReadyForPickupAsync(orderId, cancellationToken)), null);
         }
         catch (DbUpdateException)
         {
@@ -199,6 +233,17 @@ public sealed class RiderDeliveryService
                     $"配送状态 {delivery.Status} 不允许动作 {action}");
 
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+            if (next == DeliveryStatus.PickedUp && order is not null)
+            {
+                var merchantCount = await _db.OrderDishes.Where(item => item.OrderId == orderId)
+                    .Select(item => item.MerchantId).Distinct().CountAsync(cancellationToken);
+                var readyCount = await _db.MerchantOrderFulfillments.CountAsync(
+                    item => item.OrderId == orderId && item.Status == MerchantFulfillmentStatus.ReadyForDelivery,
+                    cancellationToken);
+                if (merchantCount == 0 || readyCount != merchantCount)
+                    return new AdvanceResult(AdvanceOutcome.InvalidTransition, null, "All restaurants must mark the order ready before pickup.");
+            }
+
             var now = _timeProvider.GetUtcNow().UtcDateTime;
             delivery.Status = next;
             switch (next)
@@ -227,7 +272,8 @@ public sealed class RiderDeliveryService
                 ? null
                 : await _db.UserAddresses.AsNoTracking()
                     .FirstOrDefaultAsync(a => a.Id == order.AddressId, cancellationToken);
-            return new AdvanceResult(AdvanceOutcome.Success, ToResponse(delivery, order?.Price ?? 0m, address), null);
+            return new AdvanceResult(AdvanceOutcome.Success, ToResponse(delivery, order?.Price ?? 0m, address,
+                next != DeliveryStatus.Assigned || await IsReadyForPickupAsync(orderId, cancellationToken)), null);
         }
         catch
         {
@@ -272,7 +318,8 @@ public sealed class RiderDeliveryService
     private static RiderDeliveryResponse ToResponse(
         RiderDelivery delivery,
         decimal price,
-        Features.User.UserAddress? address) => new(
+        Features.User.UserAddress? address,
+        bool readyForPickup) => new(
         delivery.OrderId,
         delivery.RiderId,
         delivery.Status.ToString(),
@@ -283,7 +330,18 @@ public sealed class RiderDeliveryService
         delivery.AssignedAtUtc,
         delivery.PickedUpAtUtc,
         delivery.DeliveringAtUtc,
-        delivery.CompletedAtUtc);
+        delivery.CompletedAtUtc,
+        readyForPickup);
+
+    private async Task<bool> IsReadyForPickupAsync(int orderId, CancellationToken cancellationToken)
+    {
+        var merchantCount = await _db.OrderDishes.Where(item => item.OrderId == orderId)
+            .Select(item => item.MerchantId).Distinct().CountAsync(cancellationToken);
+        var readyCount = await _db.MerchantOrderFulfillments.CountAsync(
+            item => item.OrderId == orderId && item.Status == MerchantFulfillmentStatus.ReadyForDelivery,
+            cancellationToken);
+        return merchantCount > 0 && merchantCount == readyCount;
+    }
 
     private enum DeliveryAction
     {

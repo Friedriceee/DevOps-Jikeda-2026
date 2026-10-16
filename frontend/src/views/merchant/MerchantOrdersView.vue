@@ -117,6 +117,8 @@ onMounted(loadOrders)
           </div>
         </template>
 
+        <el-alert v-if="order.riderName" :title="`Courier assigned: ${order.riderName} · ${order.riderPhone}`" :description="`Delivery status: ${order.deliveryStatus}`" type="success" :closable="false" show-icon />
+
         <el-table :data="order.items" stripe>
           <el-table-column prop="dishName" label="Dish" min-width="200" />
           <el-table-column label="Unit price" width="140">

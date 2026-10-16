@@ -10,7 +10,8 @@ public sealed record AvailableDeliveryResponse(
     DateTime OrderTimestamp,
     string DeliveryAddress,
     string ContactName,
-    string ContactPhone);
+    string ContactPhone,
+    string KitchenStatus);
 
 /// <summary>骑手自己的配送任务视图。</summary>
 public sealed record RiderDeliveryResponse(
@@ -24,7 +25,8 @@ public sealed record RiderDeliveryResponse(
     DateTime AssignedAtUtc,
     DateTime? PickedUpAtUtc,
     DateTime? DeliveringAtUtc,
-    DateTime? CompletedAtUtc);
+    DateTime? CompletedAtUtc,
+    bool ReadyForPickup);
 
 /// <summary>推进配送状态的请求。Action: PickUp / StartDelivering / Complete。</summary>
 public sealed class AdvanceDeliveryRequest

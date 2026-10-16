@@ -77,6 +77,7 @@ onMounted(refresh)
       <el-table v-loading="loadingAvailable" :data="available" stripe>
         <el-table-column prop="orderId" label="Order #" width="100" />
         <el-table-column prop="zone" label="Zone" width="120" />
+        <el-table-column prop="kitchenStatus" label="Kitchen" width="150" />
         <el-table-column label="Amount" width="120">
           <template #default="scope">{{ formatYuan(scope.row.price) }}</template>
         </el-table-column>
@@ -108,11 +109,13 @@ onMounted(refresh)
               v-if="canAdvance(scope.row.status)"
               link
               type="primary"
+              :disabled="scope.row.status === 'Assigned' && !scope.row.readyForPickup"
               @click="advance(scope.row)"
             >
               {{ nextDeliveryAction(scope.row.status).label }}
             </el-button>
-            <span v-else>—</span>
+            <span v-if="scope.row.status === 'Assigned' && !scope.row.readyForPickup" class="waiting">Waiting for kitchen</span>
+            <span v-else-if="!canAdvance(scope.row.status)">—</span>
           </template>
         </el-table-column>
       </el-table>
@@ -127,4 +130,5 @@ onMounted(refresh)
 .page-heading h1 { margin: 0; }
 .page-heading p { color: #6b7280; margin: 6px 0 0; }
 .section-card { margin-bottom: 18px; }
+.waiting { color: #8a6a20; font-size: 13px; }
 </style>

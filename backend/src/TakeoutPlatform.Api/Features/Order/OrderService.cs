@@ -190,8 +190,28 @@ public sealed class OrderService
             .OrderBy(order => order.Id)
             .ToListAsync(cancellationToken);
 
+        var fulfillments = await _db.MerchantOrderFulfillments.AsNoTracking()
+            .Where(item => orderIds.Contains(item.OrderId))
+            .ToListAsync(cancellationToken);
+        var deliveries = await _db.RiderDeliveries.AsNoTracking()
+            .Where(item => orderIds.Contains(item.OrderId))
+            .Join(_db.Riders.AsNoTracking(), delivery => delivery.RiderId, rider => rider.Id,
+                (delivery, rider) => new { delivery.OrderId, delivery.Status, rider.Name, rider.PhoneNumber })
+            .ToDictionaryAsync(item => item.OrderId, cancellationToken);
+
         return orders
-            .Select(order => ToResponse(order, userId))
+            .Select(order =>
+            {
+                var states = fulfillments.Where(item => item.OrderId == order.Id).Select(item => item.Status).ToArray();
+                var fulfillmentStatus = states.Length == 0 ? "Confirmed"
+                    : states.All(item => item == MerchantFulfillmentStatus.Rejected) ? "Rejected"
+                    : states.Where(item => item != MerchantFulfillmentStatus.Rejected).All(item => item == MerchantFulfillmentStatus.ReadyForDelivery) ? "ReadyForDelivery"
+                    : states.Any(item => item == MerchantFulfillmentStatus.Preparing) ? "Preparing"
+                    : states.Any(item => item == MerchantFulfillmentStatus.Accepted) ? "Accepted"
+                    : "Confirmed";
+                var delivery = deliveries.GetValueOrDefault(order.Id);
+                return ToResponse(order, userId, fulfillmentStatus, delivery?.Status.ToString(), delivery?.Name, delivery?.PhoneNumber);
+            })
             .ToList();
     }
 
@@ -276,7 +296,13 @@ public sealed class OrderService
         return ToResponse(order, userId);
     }
 
-    private static OrderResponse ToResponse(Order order, int userId) => new(
+    private static OrderResponse ToResponse(
+        Order order,
+        int userId,
+        string fulfillmentStatus = "Confirmed",
+        string? deliveryStatus = null,
+        string? riderName = null,
+        string? riderPhone = null) => new(
         order.Id,
         userId,
         order.AddressId,
@@ -284,6 +310,10 @@ public sealed class OrderService
         order.OrderTimestamp,
         order.Status,
         order.NeedUtensils,
+        fulfillmentStatus,
+        deliveryStatus,
+        riderName,
+        riderPhone,
         order.OrderDishes
             .Select(orderDish => new OrderDishResponse(
                 orderDish.MerchantId,
