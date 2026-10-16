@@ -110,6 +110,23 @@ public class CheckoutEndpointTests
 
         using var db = Db();
         Assert.That(await db.OrderCoupons.CountAsync(), Is.EqualTo(1));
+        Assert.That((await db.CustomerCoupons.SingleAsync(c => c.UserId == UserId && c.CouponId == 1)).UsedQuantity,
+            Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task Replaying_checkout_does_not_consume_the_coupon_twice()
+    {
+        var key = Key();
+        var first = await Checkout(key, new { addressId = _addressId, couponCode = "WELCOME5" });
+        var replay = await Checkout(key, new { addressId = _addressId, couponCode = "WELCOME5" });
+
+        Assert.That(first.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        Assert.That(replay.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        using var db = Db();
+        var allocation = await db.CustomerCoupons.SingleAsync(c => c.UserId == UserId && c.CouponId == 1);
+        Assert.That(allocation.UsedQuantity, Is.EqualTo(1));
+        Assert.That(await db.OrderCoupons.CountAsync(), Is.EqualTo(1));
     }
 
     [Test]

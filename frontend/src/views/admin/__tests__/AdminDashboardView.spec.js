@@ -5,7 +5,7 @@ import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
 const mocks = vi.hoisted(() => ({
   listAdminAccounts: vi.fn(), listAdminCoupons: vi.fn(), listAdminOrders: vi.fn(), listAuditLogs: vi.fn(),
   setAdminAccountRole: vi.fn(), setAdminAccountStatus: vi.fn(), setAdminCouponStatus: vi.fn(),
-  createAdminCoupon: vi.fn(), updateAdminCoupon: vi.fn(), success: vi.fn(),
+  createAdminCoupon: vi.fn(), updateAdminCoupon: vi.fn(), listCouponAllocations: vi.fn(), issueCoupon: vi.fn(), success: vi.fn(),
 }))
 
 vi.mock('@/api/admin', () => mocks)
@@ -34,6 +34,7 @@ describe('AdminDashboardView', () => {
     vi.clearAllMocks()
     mocks.listAdminAccounts.mockResolvedValue({ items: [], totalCount: 0 })
     mocks.listAdminCoupons.mockResolvedValue([])
+    mocks.listCouponAllocations.mockResolvedValue([])
     mocks.listAdminOrders.mockResolvedValue({ items: [], totalCount: 0 })
     mocks.listAuditLogs.mockResolvedValue({ items: [], totalCount: 0 })
   })
@@ -46,6 +47,7 @@ describe('AdminDashboardView', () => {
 
     expect(mocks.listAdminAccounts).toHaveBeenCalledOnce()
     expect(mocks.listAdminCoupons).toHaveBeenCalledOnce()
+    expect(mocks.listCouponAllocations).toHaveBeenCalledOnce()
     expect(mocks.listAdminOrders).toHaveBeenCalledOnce()
     expect(mocks.listAuditLogs).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('Operations console')

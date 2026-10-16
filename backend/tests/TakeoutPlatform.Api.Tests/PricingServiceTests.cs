@@ -148,10 +148,45 @@ public class PricingServiceTests : ServiceTestBase
             });
         await context.SaveChangesAsync();
 
-        var coupons = await Service(context).ListCouponsAsync(CancellationToken.None);
+        var coupons = await Service(context).ListCouponsAsync(1, CancellationToken.None);
 
         Assert.That(coupons.Select(coupon => coupon.Code),
             Is.EquivalentTo(new[] { "WELCOME5", "SAVE12" }));
+    }
+
+    [Test]
+    public async Task QuoteAsync_rejects_coupon_not_owned_by_the_customer()
+    {
+        await using var context = CreateContext();
+        context.Dishes.Add(new Dish
+        {
+            Id = 10, MerchantId = MerchantId, Name = "Dinner", Price = 100m, Inventory = 5,
+        });
+        context.CartItems.Add(new CartItem
+        {
+            UserId = 1, MerchantId = MerchantId, DishId = 10, DishNum = 1,
+        });
+        context.CustomerCoupons.RemoveRange(context.CustomerCoupons.Where(item => item.UserId == 1));
+        await context.SaveChangesAsync();
+
+        var result = await Service(context).QuoteAsync(
+            1, new PricingQuoteRequest { CouponCode = "SAVE12" }, CancellationToken.None);
+
+        Assert.That(result.ErrorCode, Is.EqualTo(PricingErrorCode.CouponNotOwned));
+    }
+
+    [Test]
+    public async Task ListCouponsAsync_hides_fully_used_allocations()
+    {
+        await using var context = CreateContext();
+        var allocation = context.CustomerCoupons.Single(item => item.UserId == 1 && item.CouponId == 1);
+        allocation.UsedQuantity = allocation.IssuedQuantity;
+        await context.SaveChangesAsync();
+
+        var coupons = await Service(context).ListCouponsAsync(1, CancellationToken.None);
+
+        Assert.That(coupons.Select(coupon => coupon.Code), Does.Not.Contain("WELCOME5"));
+        Assert.That(coupons.Select(coupon => coupon.Code), Does.Contain("SAVE12"));
     }
 
     private static PricingService Service(Data.AppDbContext context) => new(

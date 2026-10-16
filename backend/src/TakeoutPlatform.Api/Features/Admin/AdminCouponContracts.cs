@@ -10,7 +10,29 @@ public sealed record AdminCouponResponse(
     decimal DiscountAmount,
     DateTimeOffset StartsAtUtc,
     DateTimeOffset ExpiresAtUtc,
-    bool IsActive);
+    bool IsActive,
+    int IssuedQuantity,
+    int UsedQuantity);
+
+public sealed record CustomerCouponAllocationResponse(
+    int Id,
+    int UserId,
+    string CustomerName,
+    int CouponId,
+    string CouponCode,
+    int IssuedQuantity,
+    int UsedQuantity,
+    int RemainingQuantity,
+    DateTime IssuedAtUtc);
+
+public sealed class IssueCouponRequest
+{
+    [Range(1, int.MaxValue)]
+    public int UserId { get; set; }
+
+    [Range(1, 1000)]
+    public int Quantity { get; set; } = 1;
+}
 
 public sealed class CreateCouponRequest
 {

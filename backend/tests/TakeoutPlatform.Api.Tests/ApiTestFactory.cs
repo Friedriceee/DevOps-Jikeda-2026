@@ -70,6 +70,13 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
+        if (!db.CustomerCoupons.Any(item => item.UserId == 1 && item.CouponId == 1))
+        {
+            db.CustomerCoupons.AddRange(
+                new TakeoutPlatform.Api.Features.Pricing.CustomerCoupon { UserId = 1, CouponId = 1, IssuedQuantity = 20, IssuedAtUtc = DateTime.UtcNow },
+                new TakeoutPlatform.Api.Features.Pricing.CustomerCoupon { UserId = 1, CouponId = 2, IssuedQuantity = 20, IssuedAtUtc = DateTime.UtcNow });
+            db.SaveChanges();
+        }
     }
 
     protected override void Dispose(bool disposing)

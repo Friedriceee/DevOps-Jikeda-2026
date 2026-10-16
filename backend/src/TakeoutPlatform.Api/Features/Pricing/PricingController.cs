@@ -18,7 +18,7 @@ public sealed class PricingController : ControllerBase
     public async Task<ActionResult<ApiResult<IReadOnlyList<CouponOptionResponse>>>> ListCoupons(
         CancellationToken cancellationToken)
     {
-        var coupons = await _pricingService.ListCouponsAsync(cancellationToken);
+        var coupons = await _pricingService.ListCouponsAsync(User.GetProfileId(), cancellationToken);
         return Ok(ApiResult<IReadOnlyList<CouponOptionResponse>>.Ok(coupons));
     }
 

@@ -99,6 +99,31 @@ public sealed class AdminController : ControllerBase
         return MapCoupon(result, created: false);
     }
 
+    [HttpGet("coupon-allocations")]
+    public async Task<ActionResult<ApiResult<IReadOnlyList<CustomerCouponAllocationResponse>>>> ListCouponAllocations(
+        CancellationToken cancellationToken)
+    {
+        var allocations = await _coupons.ListAllocationsAsync(cancellationToken);
+        return Ok(ApiResult<IReadOnlyList<CustomerCouponAllocationResponse>>.Ok(allocations));
+    }
+
+    [HttpPost("coupons/{couponId:int}/issue")]
+    public async Task<ActionResult<ApiResult<CustomerCouponAllocationResponse>>> IssueCoupon(
+        int couponId,
+        [FromBody] IssueCouponRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _coupons.IssueAsync(couponId, request, Actor, CorrelationId, cancellationToken);
+        return result.Outcome switch
+        {
+            AdminCouponOutcome.Success => StatusCode(StatusCodes.Status201Created,
+                ApiResult<CustomerCouponAllocationResponse>.Ok(result.Allocation!)),
+            AdminCouponOutcome.NotFound or AdminCouponOutcome.CustomerNotFound =>
+                NotFound(ApiResult<CustomerCouponAllocationResponse>.Fail(result.Message!)),
+            _ => BadRequest(ApiResult<CustomerCouponAllocationResponse>.Fail(result.Message!)),
+        };
+    }
+
     // ---------- 订单查询 ----------
 
     [HttpGet("orders")]

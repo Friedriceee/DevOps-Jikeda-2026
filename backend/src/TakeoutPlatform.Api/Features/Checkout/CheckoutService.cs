@@ -202,6 +202,16 @@ public sealed class CheckoutService
         _db.OrderRiders.Add(new OrderRider { OrderId = order.Id, RiderPrice = pricing.DeliveryFee });
         if (pricing.SelectedCoupon is { } coupon)
         {
+            var allocation = await _db.CustomerCoupons
+                .SingleOrDefaultAsync(item => item.UserId == userId && item.CouponId == coupon.Id, cancellationToken);
+            if (allocation is null || allocation.UsedQuantity >= allocation.IssuedQuantity)
+            {
+                return await AbortAsync(transaction, Fail(
+                    CheckoutOutcome.PricingFailed,
+                    PricingErrorCode.CouponAlreadyUsed.ToString(),
+                    "You have no remaining uses for this coupon."));
+            }
+            allocation.UsedQuantity += 1;
             _db.OrderCoupons.Add(new OrderCoupon
             {
                 OrderId = order.Id,

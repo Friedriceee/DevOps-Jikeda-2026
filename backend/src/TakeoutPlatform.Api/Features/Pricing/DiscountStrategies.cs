@@ -15,6 +15,8 @@ public enum PricingErrorCode
     CouponInactive,
     CouponNotStarted,
     CouponExpired,
+    CouponNotOwned,
+    CouponAlreadyUsed,
     MinimumSpendNotMet,
 }
 

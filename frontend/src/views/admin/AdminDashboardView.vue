@@ -3,13 +3,15 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   createAdminCoupon, listAdminAccounts, listAdminCoupons, listAdminOrders, listAuditLogs,
-  setAdminAccountRole, setAdminAccountStatus, setAdminCouponStatus, updateAdminCoupon,
+  issueCoupon, listCouponAllocations, setAdminAccountRole, setAdminAccountStatus,
+  setAdminCouponStatus, updateAdminCoupon,
 } from '@/api/admin'
 
 const loading = ref(false)
 const activeTab = ref('accounts')
 const accounts = ref([])
 const coupons = ref([])
+const couponAllocations = ref([])
 const orders = ref([])
 const auditLogs = ref([])
 const accountTotal = ref(0)
@@ -20,6 +22,9 @@ const orderFilter = reactive({ userId: '', status: '', page: 1, pageSize: 20 })
 const auditFilter = reactive({ actor: '', action: '', targetType: '', result: '', page: 1, pageSize: 20 })
 const couponDialog = ref(false)
 const editingCouponId = ref(null)
+const issuingCoupon = ref(null)
+const issueDialog = ref(false)
+const issueForm = reactive({ userId: null, quantity: 1 })
 const couponForm = reactive({ code: '', name: '', minimumSpend: 0, discountAmount: 1, startsAtUtc: '', expiresAtUtc: '', isActive: true })
 const roles = ['Customer', 'Merchant', 'Rider', 'Administrator']
 
@@ -33,6 +38,7 @@ async function loadAccounts() {
   accountTotal.value = result.totalCount
 }
 async function loadCoupons() { coupons.value = await listAdminCoupons() }
+async function loadCouponAllocations() { couponAllocations.value = await listCouponAllocations() }
 async function loadOrders() {
   const result = await listAdminOrders(params(orderFilter))
   orders.value = result.items
@@ -45,7 +51,7 @@ async function loadAuditLogs() {
 }
 async function loadAll() {
   loading.value = true
-  try { await Promise.all([loadAccounts(), loadCoupons(), loadOrders(), loadAuditLogs()]) }
+  try { await Promise.all([loadAccounts(), loadCoupons(), loadCouponAllocations(), loadOrders(), loadAuditLogs()]) }
   finally { loading.value = false }
 }
 async function changeAccountStatus(account) {
@@ -82,6 +88,21 @@ async function changeCouponStatus(coupon) {
   ElMessage.success(`Coupon ${coupon.isActive ? 'disabled' : 'enabled'}.`)
   await Promise.all([loadCoupons(), loadAuditLogs()])
 }
+function openIssue(coupon) {
+  issuingCoupon.value = coupon
+  Object.assign(issueForm, { userId: null, quantity: 1 })
+  issueDialog.value = true
+}
+async function saveIssue() {
+  if (!issueForm.userId) {
+    ElMessage.warning('Select a customer account.')
+    return
+  }
+  await issueCoupon(issuingCoupon.value.id, issueForm.userId, issueForm.quantity)
+  issueDialog.value = false
+  ElMessage.success('Coupon issued to the customer.')
+  await Promise.all([loadCoupons(), loadCouponAllocations(), loadAuditLogs()])
+}
 
 onMounted(loadAll)
 </script>
@@ -109,8 +130,15 @@ onMounted(loadAll)
           <el-table-column prop="code" label="Code" /><el-table-column prop="name" label="Name" />
           <el-table-column label="Minimum spend"><template #default="{ row }">{{ money(row.minimumSpend) }}</template></el-table-column>
           <el-table-column label="Discount"><template #default="{ row }">{{ money(row.discountAmount) }}</template></el-table-column>
+          <el-table-column label="Issued / used" width="130"><template #default="{ row }">{{ row.issuedQuantity }} / {{ row.usedQuantity }}</template></el-table-column>
           <el-table-column label="Status"><template #default="{ row }"><el-tag :type="row.isActive ? 'success' : 'info'">{{ row.isActive ? 'Active' : 'Disabled' }}</el-tag></template></el-table-column>
-          <el-table-column label="Actions" width="180"><template #default="{ row }"><el-button link @click="openCoupon(row)">Edit</el-button><el-button link :type="row.isActive ? 'danger' : 'success'" @click="changeCouponStatus(row)">{{ row.isActive ? 'Disable' : 'Enable' }}</el-button></template></el-table-column>
+          <el-table-column label="Actions" width="240"><template #default="{ row }"><el-button link type="primary" @click="openIssue(row)">Issue</el-button><el-button link @click="openCoupon(row)">Edit</el-button><el-button link :type="row.isActive ? 'danger' : 'success'" @click="changeCouponStatus(row)">{{ row.isActive ? 'Disable' : 'Enable' }}</el-button></template></el-table-column>
+        </el-table>
+        <h3>Customer coupon balances</h3>
+        <el-table :data="couponAllocations" empty-text="No coupons have been issued.">
+          <el-table-column prop="customerName" label="Customer" /><el-table-column prop="userId" label="Customer ID" width="110" />
+          <el-table-column prop="couponCode" label="Coupon" /><el-table-column prop="issuedQuantity" label="Issued" width="90" />
+          <el-table-column prop="usedQuantity" label="Used" width="90" /><el-table-column prop="remainingQuantity" label="Remaining" width="110" />
         </el-table>
       </el-tab-pane>
       <el-tab-pane label="Orders" name="orders">
@@ -126,6 +154,17 @@ onMounted(loadAll)
     <el-dialog v-model="couponDialog" :title="editingCouponId ? 'Edit coupon' : 'Create coupon'" width="520px">
       <el-form label-position="top"><el-form-item label="Code"><el-input v-model="couponForm.code" :disabled="!!editingCouponId" /></el-form-item><el-form-item label="Name"><el-input v-model="couponForm.name" /></el-form-item><div class="form-grid"><el-form-item label="Minimum spend"><el-input-number v-model="couponForm.minimumSpend" :min="0" /></el-form-item><el-form-item label="Discount amount"><el-input-number v-model="couponForm.discountAmount" :min="0.01" /></el-form-item></div><el-form-item label="Starts at"><el-date-picker v-model="couponForm.startsAtUtc" type="datetime" /></el-form-item><el-form-item label="Expires at"><el-date-picker v-model="couponForm.expiresAtUtc" type="datetime" /></el-form-item></el-form>
       <template #footer><el-button @click="couponDialog = false">Cancel</el-button><el-button type="primary" @click="saveCoupon">Save coupon</el-button></template>
+    </el-dialog>
+    <el-dialog v-model="issueDialog" :title="`Issue ${issuingCoupon?.code || 'coupon'}`" width="460px">
+      <el-form label-position="top">
+        <el-form-item label="Customer">
+          <el-select v-model="issueForm.userId" filterable placeholder="Select a customer" style="width:100%">
+            <el-option v-for="account in accounts.filter(item => item.role === 'Customer')" :key="account.id" :label="`${account.username} (customer #${account.profileId})`" :value="account.profileId" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="Quantity"><el-input-number v-model="issueForm.quantity" :min="1" :max="1000" /></el-form-item>
+      </el-form>
+      <template #footer><el-button @click="issueDialog = false">Cancel</el-button><el-button type="primary" @click="saveIssue">Issue coupon</el-button></template>
     </el-dialog>
   </main>
 </template>

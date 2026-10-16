@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using TakeoutPlatform.Api.Data;
 using TakeoutPlatform.Api.Features.Auth;
 using TakeoutPlatform.Api.Features.Merchant;
+using TakeoutPlatform.Api.Features.Pricing;
 using Customer = TakeoutPlatform.Api.Features.User.User;
 
 namespace TakeoutPlatform.Api.Features.Seed;
@@ -69,6 +70,21 @@ public static class StagingSeeder
         await EnsureAccountAsync(db, hasher, time, options.Password, SecondMerchantUsername, AccountRole.Merchant, SecondMerchantId, cancellationToken);
         await EnsureAccountAsync(db, hasher, time, options.Password, RiderUsername, AccountRole.Rider, DemoRiderId, cancellationToken);
         await EnsureAccountAsync(db, hasher, time, options.Password, AdministratorUsername, AccountRole.Administrator, 0, cancellationToken);
+
+        foreach (var couponId in await db.PlatformCoupons.Select(item => item.Id).ToListAsync(cancellationToken))
+        {
+            if (!await db.CustomerCoupons.AnyAsync(
+                    item => item.UserId == customer.Id && item.CouponId == couponId, cancellationToken))
+            {
+                db.CustomerCoupons.Add(new CustomerCoupon
+                {
+                    UserId = customer.Id,
+                    CouponId = couponId,
+                    IssuedQuantity = 5,
+                    IssuedAtUtc = time.GetUtcNow().UtcDateTime,
+                });
+            }
+        }
 
         if (!await db.Dishes.AnyAsync(dish => dish.MerchantId == DemoMerchantId, cancellationToken))
         {

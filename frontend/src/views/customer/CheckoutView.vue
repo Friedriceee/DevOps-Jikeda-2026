@@ -295,7 +295,7 @@ onMounted(loadCheckout)
             <el-option
               v-for="coupon in pricing.coupons"
               :key="coupon.id"
-              :label="`${coupon.name} — ${formatYuan(coupon.discountAmount)} off ${formatYuan(coupon.minimumSpend)}`"
+              :label="`${coupon.name} — ${formatYuan(coupon.discountAmount)} off ${formatYuan(coupon.minimumSpend)} (${coupon.remainingQuantity} left)`"
               :value="coupon.code"
             />
           </el-select>

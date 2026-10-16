@@ -22,22 +22,28 @@ public sealed class PricingService
     }
 
     public async Task<IReadOnlyList<CouponOptionResponse>> ListCouponsAsync(
+        int userId,
         CancellationToken cancellationToken)
     {
         var now = _timeProvider.GetUtcNow();
-        var coupons = await _db.PlatformCoupons
+        var allocations = await _db.CustomerCoupons
             .AsNoTracking()
-            .Where(coupon => coupon.IsActive)
+            .Include(allocation => allocation.Coupon)
+            .Where(allocation => allocation.UserId == userId
+                && allocation.UsedQuantity < allocation.IssuedQuantity
+                && allocation.Coupon.IsActive)
             .ToListAsync(cancellationToken);
 
         // SQLite (used by tests) cannot translate DateTimeOffset ordering. The
         // active coupon set is intentionally small, so validity is filtered in
         // memory while PostgreSQL and SQLite keep identical behavior.
-        return coupons
-            .Where(coupon => coupon.StartsAtUtc <= now && coupon.ExpiresAtUtc > now)
-            .OrderBy(coupon => coupon.MinimumSpend)
-            .ThenByDescending(coupon => coupon.DiscountAmount)
-            .Select(ToCouponResponse)
+        return allocations
+            .Where(allocation => allocation.Coupon.StartsAtUtc <= now && allocation.Coupon.ExpiresAtUtc > now)
+            .OrderBy(allocation => allocation.Coupon.MinimumSpend)
+            .ThenByDescending(allocation => allocation.Coupon.DiscountAmount)
+            .Select(allocation => ToCouponResponse(
+                allocation.Coupon,
+                allocation.IssuedQuantity - allocation.UsedQuantity))
             .ToList();
     }
 
@@ -104,6 +110,13 @@ public sealed class PricingService
             if (selectedCoupon is null)
                 return Failure(PricingErrorCode.CouponNotFound, "Coupon code was not found.");
 
+            var allocation = await _db.CustomerCoupons.AsNoTracking()
+                .SingleOrDefaultAsync(item => item.UserId == userId && item.CouponId == selectedCoupon.Id, cancellationToken);
+            if (allocation is null)
+                return Failure(PricingErrorCode.CouponNotOwned, "This coupon has not been issued to your account.");
+            if (allocation.UsedQuantity >= allocation.IssuedQuantity)
+                return Failure(PricingErrorCode.CouponAlreadyUsed, "You have no remaining uses for this coupon.");
+
             var decision = Strategy(DiscountStrategyKind.PlatformCoupon).Apply(
                 new DiscountContext(discountedFoodTotal, now, Coupon: selectedCoupon));
             if (!decision.IsValid)
@@ -120,7 +133,12 @@ public sealed class PricingService
             couponDiscount,
             deliveryFee,
             total,
-            selectedCoupon is null ? null : ToCouponResponse(selectedCoupon),
+            selectedCoupon is null ? null : ToCouponResponse(
+                selectedCoupon,
+                (await _db.CustomerCoupons.AsNoTracking()
+                    .Where(item => item.UserId == userId && item.CouponId == selectedCoupon.Id)
+                    .Select(item => item.IssuedQuantity - item.UsedQuantity)
+                    .SingleAsync(cancellationToken))),
             merchants));
     }
 
@@ -132,13 +150,14 @@ public sealed class PricingService
     private static PricingQuoteOutcome Failure(PricingErrorCode code, string message) =>
         new(null, code, message);
 
-    private static CouponOptionResponse ToCouponResponse(PlatformCoupon coupon) => new(
+    private static CouponOptionResponse ToCouponResponse(PlatformCoupon coupon, int remainingQuantity) => new(
         coupon.Id,
         coupon.Code,
         coupon.Name,
         coupon.MinimumSpend,
         coupon.DiscountAmount,
-        coupon.ExpiresAtUtc);
+        coupon.ExpiresAtUtc,
+        remainingQuantity);
 
     private sealed record CartPricingRow(
         int MerchantId,

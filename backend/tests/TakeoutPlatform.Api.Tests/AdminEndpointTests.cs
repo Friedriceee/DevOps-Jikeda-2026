@@ -80,6 +80,25 @@ public class AdminEndpointTests
     }
 
     [Test]
+    public async Task Administrator_can_issue_coupon_quantity_to_a_customer()
+    {
+        using var client = _factory.CreateAuthenticatedClient(AccountRole.Administrator, 0);
+
+        var issue = await client.PostAsJsonAsync("/api/admin/coupons/1/issue", new
+        {
+            userId = 1,
+            quantity = 3,
+        });
+        Assert.That(issue.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+
+        var list = await client.GetAsync("/api/admin/coupon-allocations");
+        var body = await list.Content.ReadFromJsonAsync<ApiResponse<List<CouponAllocationDto>>>();
+        var allocation = body?.Data?.Single(item => item.UserId == 1 && item.CouponId == 1);
+        Assert.That(allocation?.IssuedQuantity, Is.EqualTo(23));
+        Assert.That(allocation?.RemainingQuantity, Is.EqualTo(23));
+    }
+
+    [Test]
     public async Task Create_coupon_with_non_positive_discount_returns_bad_request()
     {
         using var client = _factory.CreateAuthenticatedClient(AccountRole.Administrator, 0);
@@ -131,4 +150,6 @@ public class AdminEndpointTests
     private sealed record AccountDto(int Id, string Username, string Role, int ProfileId, bool IsActive);
     private sealed record CouponDto(int Id, string Code, string Name, decimal MinimumSpend, decimal DiscountAmount, bool IsActive);
     private sealed record AdminOrderDto(int OrderId, int UserId, string Status, decimal Price);
+    private sealed record CouponAllocationDto(
+        int Id, int UserId, int CouponId, int IssuedQuantity, int UsedQuantity, int RemainingQuantity);
 }

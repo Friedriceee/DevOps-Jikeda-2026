@@ -17,7 +17,7 @@ namespace TakeoutPlatform.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.8")
+                .HasAnnotation("ProductVersion", "8.0.32")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -569,6 +569,44 @@ namespace TakeoutPlatform.Api.Migrations
                     b.ToTable("OrderUsers");
                 });
 
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Pricing.CustomerCoupon", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CouponId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("IssuedQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UsedQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CouponId");
+
+                    b.HasIndex("UserId", "CouponId")
+                        .IsUnique();
+
+                    b.ToTable("CustomerCoupons", t =>
+                        {
+                            t.HasCheckConstraint("CK_CustomerCoupons_IssuedQuantity_Positive", "\"IssuedQuantity\" > 0");
+
+                            t.HasCheckConstraint("CK_CustomerCoupons_UsedQuantity_Valid", "\"UsedQuantity\" >= 0 AND \"UsedQuantity\" <= \"IssuedQuantity\"");
+                        });
+                });
+
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Pricing.PlatformCoupon", b =>
                 {
                     b.Property<int>("Id")
@@ -949,6 +987,23 @@ namespace TakeoutPlatform.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("TakeoutPlatform.Api.Features.Pricing.CustomerCoupon", b =>
+                {
+                    b.HasOne("TakeoutPlatform.Api.Features.Pricing.PlatformCoupon", "Coupon")
+                        .WithMany()
+                        .HasForeignKey("CouponId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TakeoutPlatform.Api.Features.User.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Coupon");
                 });
 
             modelBuilder.Entity("TakeoutPlatform.Api.Features.Rider.RiderDelivery", b =>

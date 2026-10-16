@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const http = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), put: vi.fn() }))
 vi.mock('@/api/http', () => ({ default: http }))
 
-import { createAdminCoupon, listAdminAccounts, listAdminOrders, listAuditLogs, setAdminAccountStatus } from '@/api/admin'
+import { createAdminCoupon, issueCoupon, listAdminAccounts, listAdminOrders, listAuditLogs, setAdminAccountStatus } from '@/api/admin'
 
 describe('administrator API', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -20,7 +20,9 @@ describe('administrator API', () => {
   it('sends account and coupon mutations to the protected API', async () => {
     await setAdminAccountStatus(7, false)
     await createAdminCoupon({ code: 'SAVE5' })
+    await issueCoupon(3, 7, 2)
     expect(http.put).toHaveBeenCalledWith('/admin/accounts/7/status', { isActive: false })
     expect(http.post).toHaveBeenCalledWith('/admin/coupons', { code: 'SAVE5' })
+    expect(http.post).toHaveBeenCalledWith('/admin/coupons/3/issue', { userId: 7, quantity: 2 })
   })
 })

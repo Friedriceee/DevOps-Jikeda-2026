@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
 using TakeoutPlatform.Api.Data;
 using TakeoutPlatform.Api.Features.Merchant;
+using TakeoutPlatform.Api.Features.Pricing;
 
 namespace TakeoutPlatform.Api.Tests;
 
@@ -40,6 +41,10 @@ public abstract class ServiceTestBase
         using var context = CreateContext();
         // 依据实体模型创建表结构（不走 EF 迁移，直接建表，适合测试）。
         context.Database.EnsureCreated();
+        context.CustomerCoupons.AddRange(
+            new CustomerCoupon { UserId = 1, CouponId = 1, IssuedQuantity = 5, IssuedAtUtc = DateTime.UtcNow },
+            new CustomerCoupon { UserId = 1, CouponId = 2, IssuedQuantity = 5, IssuedAtUtc = DateTime.UtcNow });
+        context.SaveChanges();
 
     }
 

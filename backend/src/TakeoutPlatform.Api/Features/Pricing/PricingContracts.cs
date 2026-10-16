@@ -14,7 +14,8 @@ public sealed record CouponOptionResponse(
     string Name,
     decimal MinimumSpend,
     decimal DiscountAmount,
-    DateTimeOffset ExpiresAtUtc);
+    DateTimeOffset ExpiresAtUtc,
+    int RemainingQuantity);
 
 public sealed record MerchantPricingResponse(
     int MerchantId,

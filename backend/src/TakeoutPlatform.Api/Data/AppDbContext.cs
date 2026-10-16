@@ -36,6 +36,7 @@ public class AppDbContext : DbContext
     public DbSet<MerchantOrderFulfillment> MerchantOrderFulfillments => Set<MerchantOrderFulfillment>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<PlatformCoupon> PlatformCoupons => Set<PlatformCoupon>();
+    public DbSet<CustomerCoupon> CustomerCoupons => Set<CustomerCoupon>();
     public DbSet<Rider> Riders => Set<Rider>();
     public DbSet<RiderDelivery> RiderDeliveries => Set<RiderDelivery>();
     public DbSet<InventoryReservation> InventoryReservations => Set<InventoryReservation>();
@@ -269,6 +270,25 @@ public class AppDbContext : DbContext
                     ExpiresAtUtc = new DateTimeOffset(2099, 12, 31, 23, 59, 59, TimeSpan.Zero),
                     IsActive = true,
                 });
+        });
+
+        modelBuilder.Entity<CustomerCoupon>(entity =>
+        {
+            entity.HasKey(allocation => allocation.Id);
+            entity.HasIndex(allocation => new { allocation.UserId, allocation.CouponId }).IsUnique();
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_CustomerCoupons_IssuedQuantity_Positive", "\"IssuedQuantity\" > 0");
+                table.HasCheckConstraint("CK_CustomerCoupons_UsedQuantity_Valid", "\"UsedQuantity\" >= 0 AND \"UsedQuantity\" <= \"IssuedQuantity\"");
+            });
+            entity.HasOne<Features.User.User>()
+                .WithMany()
+                .HasForeignKey(allocation => allocation.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(allocation => allocation.Coupon)
+                .WithMany()
+                .HasForeignKey(allocation => allocation.CouponId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ---------- 订单五表结构（对应旧项目 OrderDB 等）----------
