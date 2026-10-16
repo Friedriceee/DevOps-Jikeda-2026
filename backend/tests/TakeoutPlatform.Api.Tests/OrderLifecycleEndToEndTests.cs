@@ -92,11 +92,11 @@ public sealed class OrderLifecycleEndToEndTests
 
         var adminResponse = await _administrator.GetAsync($"/api/admin/orders?userId=1&status=Paid");
         var adminOrders = await adminResponse.Content.ReadFromJsonAsync<ApiResponse<PagedOrdersDto>>();
-        Assert.Multiple(() =>
+        Assert.Multiple((Action)(() =>
         {
             Assert.That(adminResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             Assert.That(adminOrders?.Data?.Items.Any(item => item.OrderId == orderId), Is.True);
-        });
+        }));
 
         var merchantOrders = await _merchant.GetAsync("/api/merchant/orders");
         var merchantBody = await merchantOrders.Content.ReadFromJsonAsync<ApiResponse<List<MerchantOrderDto>>>();
@@ -129,13 +129,13 @@ public sealed class OrderLifecycleEndToEndTests
 
         using var verificationScope = _factory.Services.CreateScope();
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
-        Assert.Multiple(() =>
+        Assert.Multiple((Action)(() =>
         {
             Assert.That(verificationDb.Orders.Single(item => item.Id == orderId).Status,
                 Is.EqualTo(OrderStatus.Completed));
             Assert.That(verificationDb.Dishes.Single(item => item.Id == 81).Inventory, Is.EqualTo(8));
             Assert.That(verificationDb.Payments.Count(item => item.OrderId == orderId), Is.EqualTo(1));
-        });
+        }));
     }
 
     private static async Task AssertSuccessfulTransition(
@@ -147,11 +147,11 @@ public sealed class OrderLifecycleEndToEndTests
         var response = await client.PutAsJsonAsync(path, new { action });
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<StatusDto>>();
         var responseText = await response.Content.ReadAsStringAsync();
-        Assert.Multiple(() =>
+        Assert.Multiple((Action)(() =>
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK), responseText);
             Assert.That(body?.Data?.Status, Is.EqualTo(expectedStatus));
-        });
+        }));
     }
 
     private sealed record ApiResponse<T>(bool Success, T? Data, string? Message, string? Code);

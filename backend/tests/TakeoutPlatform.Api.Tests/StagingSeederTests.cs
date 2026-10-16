@@ -106,7 +106,7 @@ public class StagingSeederTests
     {
         using var provider = Services(enabled: true, Password, environment: "Production");
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => StagingSeeder.RunAsync(provider));
+        Assert.ThrowsAsync<InvalidOperationException>((Func<Task>)(() => StagingSeeder.RunAsync(provider)));
     }
 
     [TestCase(null)]
@@ -116,7 +116,7 @@ public class StagingSeederTests
     {
         using var provider = Services(enabled: true, password);
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => StagingSeeder.RunAsync(provider));
+        Assert.ThrowsAsync<InvalidOperationException>((Func<Task>)(() => StagingSeeder.RunAsync(provider)));
     }
 
     private sealed class TestEnvironment(string name) : IHostEnvironment
