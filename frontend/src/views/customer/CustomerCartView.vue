@@ -119,9 +119,9 @@ onMounted(loadCart)
     </el-card>
 
     <el-card v-if="cart.groups.length > 0" class="cart-summary" shadow="never">
-      <span>{{ cart.totalCount }} item{{ cart.totalCount === 1 ? '' : 's' }}</span>
-      <span>Food subtotal: {{ formatYuan(cart.subtotal) }}</span>
-      <span>Discount: -{{ formatYuan(cart.discount) }}</span>
+      <span>{{ cart.totalCount }} item{{ cart.totalCount === 1 ? '' : 's' }}&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <span>Food subtotal: {{ formatYuan(cart.subtotal) }}&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <span>Discount: -{{ formatYuan(cart.discount) }}&nbsp;&nbsp;&nbsp;&nbsp;</span>
       <strong>Total: {{ formatYuan(cart.total) }}</strong>
     </el-card>
   </section>
