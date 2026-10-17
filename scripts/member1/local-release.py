@@ -52,6 +52,10 @@ def database_snapshot():
     sql = '''SELECT json_build_object(
       'orders', (SELECT count(*) FROM "Orders"),
       'completed', (SELECT count(*) FROM "Orders" WHERE "Status" = 9),
+      'order_fingerprint', (SELECT md5(coalesce(jsonb_agg(to_jsonb(t) ORDER BY t."Id")::text,'[]')) FROM "Orders" t),
+      'stock_fingerprint', (SELECT md5(coalesce(jsonb_agg(to_jsonb(t) ORDER BY t."Id")::text,'[]')) FROM "Dishes" t),
+      'coupon_fingerprint', (SELECT md5(coalesce(jsonb_agg(to_jsonb(t) ORDER BY t."Id")::text,'[]')) FROM "CustomerCoupons" t),
+      'payment_fingerprint', (SELECT md5(coalesce(jsonb_agg(to_jsonb(t) ORDER BY t."Id")::text,'[]')) FROM "Payments" t),
       'negative_stock', (SELECT count(*) FROM "Dishes" WHERE "Inventory" < 0),
       'duplicate_assignments', (SELECT count(*) FROM (SELECT "OrderId" FROM "RiderDeliveries" GROUP BY "OrderId" HAVING count(*) > 1) x)
     );'''

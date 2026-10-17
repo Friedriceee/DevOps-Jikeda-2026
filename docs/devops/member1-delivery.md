@@ -10,7 +10,7 @@ Verified on 17 October 2026. This branch integrates PR #37 (containers/CD) and P
 - Make ephemeral CD rehearsal an explicit manual option. Missing persistent-staging credentials now fails the normal deployment instead of silently reporting a temporary runner as staging.
 - Replace the old Debian API / nginx 1.27 runtime bases with supported Alpine variants, pin their runtime digests and explicitly run the frontend as UID 101. Adjust health checks for Alpine and retain backwards-compatible staging checks for the old image.
 - Bind local staging to 127.0.0.1 by default. Use a separately configured TLS reverse proxy for shared staging.
-- Add an isolated, repeatable old → new → rollback → roll-forward harness. It checks database snapshots before/after image switches and runs the 19-step business smoke on every stage.
+- Add an isolated, repeatable old → new → rollback → roll-forward harness. It checks order, stock, coupon and payment fingerprints before/after image switches and runs the 20-step business smoke on every stage. The administrator issues a test coupon before each run through the real API so repeated deployments do not exhaust the initial five seeded coupons; application coupon rules stay intact.
 - Add Azure infrastructure, private PostgreSQL networking, four database privileges, per-service identities, Service Bus subscriptions, HTTP/backlog scaling configuration, protected deployment settings and independent-release workflow scaffolding.
 
 ## Verified locally
@@ -24,7 +24,7 @@ Verified on 17 October 2026. This branch integrates PR #37 (containers/CD) and P
 | Original runtime images | API 66 / frontend 41 High/Critical records before base updates |
 | Updated runtime images | API 0 / frontend 0 High/Critical; unfixed findings are not filtered |
 | Clean source snapshot scan | Zero High/Critical vulnerability, secret or misconfiguration findings |
-| Release rehearsal | Four stages; each completes 19 smoke steps; database records persist |
+| Release rehearsal | Four stages; each completes 20 smoke steps; database records persist |
 | Database role bootstrap | Four roles read/write their own DB, cannot connect to other domain DBs, cannot create tables |
 | Bicep and workflows | Bicep compiled with no diagnostics; actionlint passed |
 
