@@ -37,7 +37,7 @@ jobs:
       RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
       REGISTRY_NAME: ${{ vars.AZURE_REGISTRY_NAME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify migrated service and release checks
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,22 +50,22 @@ jobs:
           context=$(python3 -c 'import json,os; print(json.load(open("infra/azure/service-contract.json"))["services"][os.environ["SERVICE"]]["context"])')
           echo "context=$context" >> "$GITHUB_OUTPUT"
           echo "image=${REGISTRY_NAME}.azurecr.io/${SERVICE}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
       - name: Test selected service with PostgreSQL
         env:
           JIKEDA_TEST_POSTGRES: 'Host=127.0.0.1;Port=5432;Database=postgres;Username=takeout;Password=takeout'
         run: python3 scripts/member1/test-service.py "$SERVICE"
-      - uses: azure/login@v2
+      - uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Authenticate to ACR
         run: az acr login --name "$REGISTRY_NAME"
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           context: ${{ steps.spec.outputs.context }}
           load: true
@@ -95,7 +95,7 @@ jobs:
             sleep 10
           done
           if [ "$ready" != true ]; then exit 1; fi
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Full gateway business smoke after deployment
@@ -112,7 +112,7 @@ jobs:
             az containerapp update -g "$RESOURCE_GROUP" -n "$PREFIX-$SERVICE" --image "$previous" --query '{restoredImage:properties.template.containers[0].image}' -o json
             echo "::warning::Previous image restored. Inspect readiness and rerun smoke before declaring rollback successful."
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: release-${{ inputs.service }}-${{ github.sha }}
