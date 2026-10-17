@@ -178,7 +178,9 @@ resource busReceive 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for 
   name: guid(subscriptions[i].id, identity[indexOf(domains, domain)].id, 'receiver')
   scope: subscriptions[i]
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4f6e3b88-14fb-41d1-bc54-e29f6080df15')
+    // Azure Service Bus Data Receiver, verified against Microsoft built-in roles.
+    // https://learn.microsoft.com/azure/role-based-access-control/built-in-roles/integration
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0')
     principalId: identity[indexOf(domains, domain)].properties.principalId
     principalType: 'ServicePrincipal'
   }
