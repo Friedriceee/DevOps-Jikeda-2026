@@ -2,7 +2,7 @@
 
 ## Branching
 
-- `main` is protected and always releasable. Changes land only through a pull request with one approval and the required status checks.
+- Recommended policy: protect `main`, require one review and all required checks. Repository protection settings must be verified by a repository administrator; they have not been independently confirmed here.
 - Short-lived `feat/* fix/* chore/* docs/*` branches, deleted on merge.
 - Merge strategy: squash and merge.
 
@@ -73,3 +73,7 @@ See [staging-runbook.md](staging-runbook.md) for setup and troubleshooting.
 ## Metrics
 
 - CI pass rate and duration, number of failed deployments, time to roll back, open CodeQL alerts, outdated dependencies.
+
+## Sprint 4 quality integration
+
+Keep the PostgreSQL integration tests, container smoke and secret-scan from PR #37 together with the blocking npm dependency check and quality evidence from PR #38. See [quality gates](../quality/sprint-04-quality-gates.md), [traceability](../quality/traceability-matrix.md) and [performance scope](../quality/performance-test.md). The existing k6 script measures reads and invalid checkout validation; it does not measure successful checkout throughput.

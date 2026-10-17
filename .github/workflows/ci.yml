@@ -62,7 +62,7 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
-    # 依赖漏洞扫描。Sprint 1 阶段先保持非阻断，但仍保留扫描结果和日志。
+    # Sprint 4 release gate: High/Critical dependency findings block the PR.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -78,7 +78,6 @@ jobs:
           node-version: '20'
       - name: npm 依赖漏洞
         working-directory: frontend
-        continue-on-error: true
         run: |
           npm audit --audit-level=high
 

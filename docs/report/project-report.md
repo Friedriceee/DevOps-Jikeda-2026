@@ -38,6 +38,13 @@
 - 覆盖率现状
 - 复杂类的测试清单
 
+Sprint 4 的可执行证据索引见
+[../quality/traceability-matrix.md](../quality/traceability-matrix.md) 与
+[../quality/sprint-04-quality-gates.md](../quality/sprint-04-quality-gates.md)。
+全链路 HTTP 验证使用 `scripts/smoke/staging-smoke.mjs`；20-VU 性能验证使用
+`scripts/performance/sprint4-order-readiness.js`。正式报告填写实际 CI、staging
+和 k6 运行链接，不把尚未运行的检查写成“已通过”。
+
 ## 7. Retrospective
 
 每个 sprint 的回顾汇总，见 [../agile/](../agile/)。
