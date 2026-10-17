@@ -4,7 +4,10 @@ A food delivery platform — **DevOps Group Assignment · 2026 · jikeda**.
 
 Practising DevOps on a full-stack food delivery app: branch protection, CI/CD pipelines, automated testing, containerisation, weekly iterative delivery.
 
-Built from scratch, features delivered iteratively sprint by sprint. Sprint 1 covers the merchant module: dish management (create/view/edit/remove — done) and special offers (in progress).
+Built from scratch, features delivered iteratively sprint by sprint. Sprint 4
+integrates server-priced checkout, payment/idempotency safeguards,
+multi-restaurant fulfilment, rider delivery tracking, administrator/audit views,
+and the final quality and release evidence package.
 
 ## Tech Stack
 
@@ -65,6 +68,22 @@ npm run dev                                     # http://localhost:5173
 - [docs/agile/sprint-01-plan.md](docs/agile/sprint-01-plan.md) — Sprint 1 plan and task breakdown
 - [docs/api-contract.md](docs/api-contract.md) — API contract
 - [docs/devops/pipeline-design.md](docs/devops/pipeline-design.md) — DevOps/DevSecOps pipeline design
+- [docs/quality/sprint-04-quality-gates.md](docs/quality/sprint-04-quality-gates.md) — release-blocking quality gates
+- [docs/quality/traceability-matrix.md](docs/quality/traceability-matrix.md) — proposal-to-code/test/evidence traceability
+- [docs/demo/sprint-04-demo-script.md](docs/demo/sprint-04-demo-script.md) — final demo and screenshot checklist
+
+## Quality commands
+
+```bash
+dotnet test backend/TakeoutPlatform.sln -c Release -m:1
+npm test --prefix frontend -- --run
+npm run build --prefix frontend
+BASE_URL=http://localhost:5173 API_URL=http://localhost:5080 \
+  SMOKE_PASSWORD="$SMOKE_PASSWORD" node scripts/smoke/staging-smoke.mjs
+```
+
+The 20-VU non-mutating k6 gate and its safe checkout-validation probe are
+documented in [docs/quality/performance-test.md](docs/quality/performance-test.md).
 
 ## Contributing
 

@@ -19,11 +19,14 @@
     "vue-router": "^4.4.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.1.4",
+    "@vitejs/plugin-vue": "^6.0.10",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^25.0.1",
-    "vite": "^5.4.8",
-    "vitest": "^2.1.2"
+    "vite": "^8.3.4",
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "brace-expansion": "5.0.12"
   },
   "volta": {
     "node": "22.22.2"

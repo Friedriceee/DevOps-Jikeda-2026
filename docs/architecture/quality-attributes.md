@@ -5,7 +5,7 @@
 | 可测试性 | 复杂逻辑可单测，不依赖真实数据库 | Service 层依赖注入；测试用 EF Core SQLite in-memory；契约先行 | CI 跑单测；覆盖率报告 |
 | 可维护性 | 新人一天内能上手加一个接口 | 按功能分文件夹（Features/）；统一响应/异常；Conventional Commits；小 PR | code review；PR 大小 |
 | 安全性 | 最小安全考量 | 密钥不入库（`appsettings.Development.json` 进 gitignore）；依赖漏洞扫描（Dependabot）；SAST（CodeQL）；输入校验（DataAnnotations） | CI 安全作业；CodeQL 告警数 |
-| 性能 | 常规请求 P95 < 300ms（本地） | 避免 N+1（EF 显式 Include）；分页；主键用数据库自增而非全表扫描分配 ID | 手动压测 / 后续加基准 |
+| 性能 | Sprint 4 发布门禁：20 个并发虚拟用户下 P95 < 2s；本地常规请求继续以 < 300ms 为优化目标 | 避免 N+1（EF 显式 Include）；分页；主键用数据库自增而非全表扫描分配 ID；使用 k6 对菜单、购物车、报价、checkout 校验和订单查询施压 | `scripts/performance/sprint4-order-readiness.js`；成功 checkout 由 staging smoke test 验证 |
 | 可用性 | CI 绿才能合并，避免坏代码进主干 | 分支保护 + 必需状态检查；健康检查接口 | GitHub branch protection |
 | 可移植性 | 一条命令起本地环境 | Docker Compose 起 DB；`.env` 配置化 | README「5 分钟启动」 |
 

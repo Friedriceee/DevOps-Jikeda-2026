@@ -30,3 +30,13 @@
 
 - [api-contract.md](api-contract.md) — 前后端接口契约
 - [../CONTRIBUTING.md](../CONTRIBUTING.md) — 分支与提交规则
+
+## Sprint 4 quality and delivery
+
+| 交付物 | 位置 |
+|---|---|
+| Proposal → code/API/tests/evidence traceability | [quality/traceability-matrix.md](quality/traceability-matrix.md) |
+| Release-blocking quality gates | [quality/sprint-04-quality-gates.md](quality/sprint-04-quality-gates.md) |
+| 20-VU performance runbook | [quality/performance-test.md](quality/performance-test.md) and `../scripts/performance/sprint4-order-readiness.js` |
+| Final demo and screenshot script | [demo/sprint-04-demo-script.md](demo/sprint-04-demo-script.md) |
+| Sprint 4 review / retrospective / burndown | [agile/sprint-04-review.md](agile/sprint-04-review.md), [agile/sprint-04-retrospective.md](agile/sprint-04-retrospective.md), [agile/sprint-04-burndown.md](agile/sprint-04-burndown.md) |
