@@ -21,7 +21,7 @@
                        │ merged to main, CI green
                        ▼
                  CD  ─ build images ─► Trivy scan ─► push to GHCR (sha tag)
-                       ─► deploy to staging ─► health ─► smoke test
+                       ─► requested deployment only ─► health ─► smoke test
                        ─► promote tags (staging, staging-previous)
                        └ on failure: redeploy previous release, verify, mark run failed
 ```
@@ -36,21 +36,22 @@
 | SAST | `codeql.yml` | GitHub CodeQL | push, PR, weekly |
 | Dependency updates | `.github/dependabot.yml` | Dependabot (grouped, no major bumps) | weekly |
 | Image build, scan, publish | `cd.yml` → `build` | Docker Buildx, Trivy, GHCR | CI green on `main`, manual |
-| Deploy, verify, roll back | `cd.yml` → `deploy` | docker compose, SSH, smoke script | after `build` |
+| Deploy, verify, roll back | `cd.yml` → `deploy` | docker compose, SSH, smoke script | after `build`, only for an explicit target |
 
 ## Continuous deployment
 
-**Artifacts.** Two images, tagged immutably with the commit (`sha-<12 chars>`):
+**Artifacts.** Two images under `ghcr.io/<owner>/<repository>` (lowercase), tagged immutably with the commit (`sha-<12 chars>`), with OCI source/revision labels linking publication to the owning repository:
 
 - `takeout-api` — multi-stage .NET 8 build, runs as a non-root user.
 - `takeout-frontend` — Vite build served by unprivileged nginx, which also reverse-proxies `/api` to the API so the browser sees one origin.
 
-**Scan before publish.** Images are built into the runner's local Docker daemon and scanned with Trivy (HIGH/CRITICAL, fixable only). A failed scan fails the workflow and **nothing is pushed**.
+**Scan before publish.** Images are built into the runner's local Docker daemon and scanned with Trivy (HIGH/CRITICAL, including unfixed findings). A failed scan fails the workflow and **nothing is pushed**.
 
 **Staging target.** One compose file (`docker-compose.staging.yml`) with PostgreSQL, API and frontend, driven by `scripts/deploy/deploy.sh`:
 
-- *Remote mode* — when the `STAGING_HOST`, `STAGING_USER` and `STAGING_SSH_KEY` secrets exist, the release is copied to and started on that server over SSH.
-- *Runner mode* — otherwise the same stack is started on the Actions runner, so every release is still deployed, verified and rolled back end to end even without a server. The environment is thrown away afterwards, and all secrets are generated fresh per run.
+- *Image delivery only* — default while no persistent staging is configured. Build, scan and publish images; deployment is explicitly reported as not requested.
+- *Remote mode* — repository variable `STAGING_ENABLED=true` enables automatic persistent deployment; manual `deploy_to_staging=true` requests one deployment. Missing host/user/SSH/smoke secrets fails a requested deployment.
+- *Runner rehearsal* — manual `ephemeral_rehearsal=true` explicitly selects a temporary runner stack. It takes precedence over automatic staging, never silently substitutes for persistent staging, and is labelled as rehearsal. Secrets are generated fresh per run.
 
 **Verification.** After the deploy: health checks (`/healthz`, `/api/health`), then the smoke test, which pushes **one order** through the whole lifecycle with real HTTP calls — decline, paid checkout, idempotent replay, merchant accept/prepare/ready, rider accept/pick-up/deliver/complete, customer sees *Completed*.
 

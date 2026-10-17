@@ -37,3 +37,4 @@ pnpm-debug.log*
 .deployed-tag
 output/member1/
 infra/azure/main.json
+__pycache__/

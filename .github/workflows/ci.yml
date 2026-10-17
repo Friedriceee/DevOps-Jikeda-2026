@@ -65,6 +65,8 @@ jobs:
     # Sprint 4 release gate: High/Critical dependency findings block the PR.
     steps:
       - uses: actions/checkout@v4
+      - name: Test release target and registry isolation
+        run: python3 -m unittest discover -s scripts/member1/tests -v
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
