@@ -133,7 +133,7 @@ namespace TakeoutPlatform.Api.Migrations
                             CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             NormalizedUsername = "ADMIN",
-                            PasswordHash = "AQAAAAIAAYagAAAAEP8/kHbqZOLjY1r3lOeyHus9BtbVjlwlQHFjJ4AvAWRSQwPvAllNkaLJ9XNK+nk6kA==",
+                            PasswordHash = "Ag==",
                             ProfileId = 0,
                             Role = "Administrator",
                             Username = "admin"

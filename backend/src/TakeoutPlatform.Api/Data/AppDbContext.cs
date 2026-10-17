@@ -123,14 +123,16 @@ public class AppDbContext : DbContext
             entity.HasIndex(account => account.NormalizedUsername).IsUnique();
             entity.HasIndex(account => new { account.Role, account.ProfileId }).IsUnique();
 
-            // 种子管理员账号（仅用于 staging/测试，不是生产密钥）。
-            // 用户名 admin / 密码 Admin@12345（哈希为 Identity PasswordHasher 预生成）。
+            // Built-in administrator profile. It deliberately ships WITHOUT a usable password: a
+            // credential committed to the repository would be a working login on every database
+            // created from these migrations, production included. The password comes from
+            // configuration (Admin__InitialPassword, or Seed__Password in staging); see AdminBootstrap.
             entity.HasData(new Account
             {
                 Id = 1000,
                 Username = "admin",
                 NormalizedUsername = "ADMIN",
-                PasswordHash = "AQAAAAIAAYagAAAAEP8/kHbqZOLjY1r3lOeyHus9BtbVjlwlQHFjJ4AvAWRSQwPvAllNkaLJ9XNK+nk6kA==",
+                PasswordHash = PasswordHashes.Unusable,
                 Role = AccountRole.Administrator,
                 ProfileId = 0,
                 CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),

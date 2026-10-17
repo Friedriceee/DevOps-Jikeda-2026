@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -25,6 +27,7 @@ public class FreshDatabasePostgresTests
     private string? _admin;
     private string? _connection;
     private string? _database;
+    private string? _adminHashAfterMigrating;
 
     private AppDbContext Context() =>
         new(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(_connection).Options);
@@ -52,6 +55,9 @@ public class FreshDatabasePostgresTests
         _connection = builder.ConnectionString;
         await using var db = Context();
         await db.Database.MigrateAsync();
+        // Captured before any test (such as the seeder tests) can give the admin a password.
+        _adminHashAfterMigrating = await db.Accounts.AsNoTracking()
+            .Where(account => account.Id == 1000).Select(account => account.PasswordHash).SingleAsync();
     }
 
     [OneTimeTearDown]
@@ -124,6 +130,41 @@ public class FreshDatabasePostgresTests
             var login = await auth.LoginAsync(new LoginRequest { Username = username, Password = Password }, default);
             Assert.That(login, Is.Not.Null, $"{username} could not sign in");
         }
+    }
+
+    [Test]
+    public async Task The_built_in_admin_has_no_usable_password_on_a_fresh_database()
+    {
+        Assert.That(_adminHashAfterMigrating, Is.EqualTo(PasswordHashes.Unusable));
+        await Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task Migrating_an_existing_database_replaces_the_old_committed_admin_hash_only()
+    {
+        const string oldCommittedHash =
+            "AQAAAAIAAYagAAAAEP8/kHbqZOLjY1r3lOeyHus9BtbVjlwlQHFjJ4AvAWRSQwPvAllNkaLJ9XNK+nk6kA==";
+        await using var db = Context();
+        var migrator = db.GetService<IMigrator>();
+        var previous = "20261016105812_AddCustomerCouponAllocations";
+
+        // 1. an old database: roll back before the fix and put the committed credential back
+        await migrator.MigrateAsync(previous);
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE \"Accounts\" SET \"PasswordHash\" = {0} WHERE \"Id\" = 1000", oldCommittedHash);
+        await migrator.MigrateAsync();
+        Assert.That(
+            (await db.Accounts.AsNoTracking().SingleAsync(a => a.Id == 1000)).PasswordHash,
+            Is.EqualTo(PasswordHashes.Unusable), "the committed credential must be disabled");
+
+        // 2. a database whose administrator already chose a real password keeps it
+        await migrator.MigrateAsync(previous);
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE \"Accounts\" SET \"PasswordHash\" = 'chosen-by-an-operator' WHERE \"Id\" = 1000");
+        await migrator.MigrateAsync();
+        Assert.That(
+            (await db.Accounts.AsNoTracking().SingleAsync(a => a.Id == 1000)).PasswordHash,
+            Is.EqualTo("chosen-by-an-operator"));
     }
 
     private ServiceProvider SeedServices()
