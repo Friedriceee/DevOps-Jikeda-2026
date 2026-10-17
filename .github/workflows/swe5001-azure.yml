@@ -1,0 +1,40 @@
+name: SWE5001 Azure infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Apply paid infrastructure changes instead of what-if. Requires configured Azure environment and agreed budget.'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: swe5001-azure-infrastructure
+  cancel-in-progress: false
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    environment: swe5001-azure
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Validate or provision infrastructure
+        env:
+          APPLY: ${{ inputs.apply }}
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_PREFIX: ${{ vars.AZURE_PREFIX }}
+          AZURE_DB_ADMIN_PASSWORD: ${{ secrets.AZURE_DB_ADMIN_PASSWORD }}
+          JIKEDA_JWT_KEY: ${{ secrets.JIKEDA_JWT_KEY }}
+          JIKEDA_IDENTITY_DB_PASSWORD: ${{ secrets.JIKEDA_IDENTITY_DB_PASSWORD }}
+          JIKEDA_CATALOG_DB_PASSWORD: ${{ secrets.JIKEDA_CATALOG_DB_PASSWORD }}
+          JIKEDA_ORDER_DB_PASSWORD: ${{ secrets.JIKEDA_ORDER_DB_PASSWORD }}
+          JIKEDA_FULFILMENT_DB_PASSWORD: ${{ secrets.JIKEDA_FULFILMENT_DB_PASSWORD }}
+        run: |
+          args=(--resource-group "$AZURE_RESOURCE_GROUP" --prefix "$AZURE_PREFIX")
+          if [ "$APPLY" = "true" ]; then args+=(--apply); fi
+          python3 scripts/member1/deploy-azure.py "${args[@]}"

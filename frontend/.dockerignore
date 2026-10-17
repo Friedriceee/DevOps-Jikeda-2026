@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.env*.local
+Dockerfile
+.dockerignore
+**/__tests__/
+**/*.spec.js

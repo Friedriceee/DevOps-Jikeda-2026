@@ -15,6 +15,7 @@ using TakeoutPlatform.Api.Features.Pricing;
 using TakeoutPlatform.Api.Features.Inventory;
 using TakeoutPlatform.Api.Features.Checkout;
 using TakeoutPlatform.Api.Features.Seed;
+using TakeoutPlatform.Api.Features.Admin;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,6 +85,7 @@ builder.Services.AddScoped<TakeoutPlatform.Api.Features.Rider.RiderRegistrationS
 builder.Services.AddScoped<PricingService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.Configure<SeedOptions>(builder.Configuration.GetSection(SeedOptions.SectionName));
+builder.Services.Configure<AdminBootstrapOptions>(builder.Configuration.GetSection(AdminBootstrapOptions.SectionName));
 builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(PaymentOptions.SectionName));
 builder.Services.AddSingleton<IPaymentGateway, SimulatedPaymentGateway>();
 builder.Services.AddScoped<CheckoutService>();
@@ -113,6 +115,7 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
     await migrationScope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
 }
 await StagingSeeder.RunAsync(app.Services);
+await AdminBootstrap.RunAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {

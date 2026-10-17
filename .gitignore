@@ -31,3 +31,9 @@ pnpm-debug.log*
 
 # ---------- misc ----------
 *.log
+
+# local deployment state and secrets
+.env
+.deployed-tag
+output/member1/
+infra/azure/main.json

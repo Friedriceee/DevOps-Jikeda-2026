@@ -15,6 +15,23 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # A real PostgreSQL server for the integration tests: they build the schema from the
+    # actual EF migrations and exercise the concurrency guarantees (checkout idempotency,
+    # no overselling) that SQLite cannot reproduce.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: takeout
+          POSTGRES_PASSWORD: takeout
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U takeout"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -22,8 +39,10 @@ jobs:
           dotnet-version: '8.0.x'
       - run: dotnet restore
       - run: dotnet build --no-restore -c Release
-      - run: dotnet test --no-build -c Release --verbosity normal
-        # 测试用 SQLite in-memory，不需要真实数据库
+      - name: Test (SQLite unit/endpoint tests + PostgreSQL integration tests)
+        run: dotnet test --no-build -c Release --verbosity normal
+        env:
+          JIKEDA_TEST_POSTGRES: "Host=127.0.0.1;Port=5432;Username=takeout;Password=takeout;Database=postgres"
 
   frontend:
     runs-on: ubuntu-latest
@@ -43,7 +62,7 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
-    # 依赖漏洞扫描。Sprint 1 阶段先保持非阻断，但仍保留扫描结果和日志。
+    # Sprint 4 release gate: High/Critical dependency findings block the PR.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -53,12 +72,68 @@ jobs:
         working-directory: backend
         run: |
           dotnet restore
-          dotnet list package --vulnerable --include-transitive
+          dotnet list package --vulnerable --include-transitive --format json --output-version 1 > vulnerability-report.json
+          python3 ../scripts/member1/dependency-gate.py vulnerability-report.json
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: npm 依赖漏洞
         working-directory: frontend
-        continue-on-error: true
         run: |
           npm audit --audit-level=high
+
+  # Builds the real images and starts PostgreSQL + API + frontend with docker compose,
+  # then walks one order from checkout to delivery over HTTP. This is the check that the
+  # Dockerfiles, nginx proxy, migrations and demo seed data all work together, before merge.
+  stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build production images
+        run: |
+          echo "JWT_KEY=$(openssl rand -hex 32)" >> .env
+          echo "SEED_PASSWORD=Smoke-$(openssl rand -hex 8)" >> .env
+          docker compose --profile app build --pull
+      - name: Scan API production image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: takeout-api:local
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+      - name: Scan frontend production image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: takeout-frontend:local
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+      - name: Start scanned stack
+        run: docker compose --profile app up -d --no-build --wait --wait-timeout 300
+      - name: Smoke test (checkout to delivery, one order)
+        run: |
+          set -a; . ./.env; set +a
+          BASE_URL=http://localhost:8080 SMOKE_PASSWORD="$SEED_PASSWORD" node scripts/smoke/staging-smoke.mjs
+      - name: Show service logs when something failed
+        if: failure()
+        run: docker compose --profile app logs --no-color --tail=200
+      - name: Stop the stack
+        if: always()
+        run: docker compose --profile app down -v
+
+  # Fails the build if a credential was committed anywhere in the repository history.
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan history for secrets (gitleaks)
+        run: |
+          version=8.21.2
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${version}/gitleaks_${version}_linux_x64.tar.gz" | tar -xz gitleaks
+          ./gitleaks detect --source . --redact --no-banner --exit-code 1

@@ -192,7 +192,7 @@ GET /api/merchant/{merchantId}/special-offers
 ## Sprint 4：管理员后端（Administrator）
 
 > 所有 `/api/admin/*` 接口要求 `Authorize(Roles = Administrator)`：匿名返回 `401`，非管理员角色（Customer/Merchant/Rider）返回 `403`。管理员身份与操作者（actor）取自 JWT，不信任请求参数。敏感操作写审计日志（member3 的 Audit Log）。
-> 平台种子管理员账号：用户名 `admin` / 密码 `Admin@12345`（仅用于 staging 与测试，非生产密钥）。
+> 内置管理员账号 `admin` **没有可用的默认密码**（数据库中的密码哈希是不可用值，任何密码都无法登录）。启用方式：非生产环境由 `Seed__Password` 设置（与其它演示账号共用）；其它环境由运维设置环境变量 `Admin__InitialPassword`（至少 12 个字符，只会在账号尚未启用时生效一次，不会覆盖已设置的密码）。
 
 ### 账号查询
 ```

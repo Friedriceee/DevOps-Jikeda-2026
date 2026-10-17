@@ -115,6 +115,18 @@ const administrator = await step('administrator signs in', () => login('admin'))
 const merchant = await step('merchant signs in', () => login('demo_merchant'))
 const rider = await step('rider signs in', () => login('demo_rider'))
 
+await step('administrator issues one coupon for this repeatable smoke run', async () => {
+  const coupons = await request('GET', '/api/admin/coupons', { token: administrator.accessToken })
+  expect(coupons.status === 200, 'administrator could not read coupons', coupons.text)
+  const coupon = coupons.json?.data?.find((item) => item.code === 'WELCOME5')
+  expect(coupon, 'the seeded WELCOME5 coupon is missing')
+  const allocation = await request('POST', `/api/admin/coupons/${coupon.id}/issue`, {
+    token: administrator.accessToken,
+    body: { userId: customer.profileId, quantity: 1 },
+  })
+  expect(allocation.status === 201 && allocation.json?.success, 'coupon issuance failed', allocation.text)
+})
+
 await step('protected endpoints reject anonymous callers and the wrong role', async () => {
   const anonymous = await request('POST', '/api/checkout', { body: { addressId: 1 } })
   expect(anonymous.status === 401, `anonymous checkout returned ${anonymous.status}, expected 401`)
