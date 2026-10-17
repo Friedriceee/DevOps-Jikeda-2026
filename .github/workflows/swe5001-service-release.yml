@@ -1,0 +1,121 @@
+name: SWE5001 independent service release
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        type: choice
+        required: true
+        description: 'Release one service after the four-service migration and initial Azure deployment.'
+        options: [identity, catalog, order, fulfilment, gateway]
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+concurrency:
+  group: swe5001-release-${{ inputs.service }}
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: swe5001-azure
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: takeout
+          POSTGRES_PASSWORD: takeout
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U takeout"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SERVICE: ${{ inputs.service }}
+      PREFIX: ${{ vars.AZURE_PREFIX }}
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      REGISTRY_NAME: ${{ vars.AZURE_REGISTRY_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify migrated service and release checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/member1/service-preflight.py
+          python3 scripts/member1/release-checks.py "$GITHUB_SHA"
+      - name: Resolve build context
+        id: spec
+        run: |
+          context=$(python3 -c 'import json,os; print(json.load(open("infra/azure/service-contract.json"))["services"][os.environ["SERVICE"]]["context"])')
+          echo "context=$context" >> "$GITHUB_OUTPUT"
+          echo "image=${REGISTRY_NAME}.azurecr.io/${SERVICE}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test selected service with PostgreSQL
+        env:
+          JIKEDA_TEST_POSTGRES: 'Host=127.0.0.1;Port=5432;Database=postgres;Username=takeout;Password=takeout'
+        run: python3 scripts/member1/test-service.py "$SERVICE"
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Authenticate to ACR
+        run: az acr login --name "$REGISTRY_NAME"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.spec.outputs.context }}
+          load: true
+          tags: ${{ steps.spec.outputs.image }}
+          labels: org.opencontainers.image.revision=${{ github.sha }}
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.spec.outputs.image }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+      - name: Publish and deploy one immutable image
+        env:
+          IMAGE: ${{ steps.spec.outputs.image }}
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$IMAGE")
+          previous=$(az containerapp show -g "$RESOURCE_GROUP" -n "$PREFIX-$SERVICE" --query 'properties.template.containers[0].image' -o tsv)
+          printf '%s\n' "$previous" > previous-image.txt
+          az containerapp update -g "$RESOURCE_GROUP" -n "$PREFIX-$SERVICE" --image "$digest" --query '{revision:properties.latestRevisionName,image:properties.template.containers[0].image}' -o json > deployment.json
+          ready=false
+          for attempt in $(seq 1 30); do
+            latest=$(az containerapp show -g "$RESOURCE_GROUP" -n "$PREFIX-$SERVICE" --query properties.latestRevisionName -o tsv)
+            active=$(az containerapp show -g "$RESOURCE_GROUP" -n "$PREFIX-$SERVICE" --query properties.latestReadyRevisionName -o tsv)
+            if [ "$latest" = "$active" ] && [ -n "$latest" ]; then ready=true; break; fi
+            sleep 10
+          done
+          if [ "$ready" != true ]; then exit 1; fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full gateway business smoke after deployment
+        env:
+          SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
+        run: |
+          gateway=$(az containerapp show -g "$RESOURCE_GROUP" -n "$PREFIX-gateway" --query properties.configuration.ingress.fqdn -o tsv)
+          BASE_URL="https://$gateway" CHECK_FRONTEND=false node scripts/smoke/staging-smoke.mjs
+      - name: Restore previous image after a deployment or smoke failure
+        if: failure()
+        run: |
+          if [ -s previous-image.txt ]; then
+            previous=$(cat previous-image.txt)
+            az containerapp update -g "$RESOURCE_GROUP" -n "$PREFIX-$SERVICE" --image "$previous" --query '{restoredImage:properties.template.containers[0].image}' -o json
+            echo "::warning::Previous image restored. Inspect readiness and rerun smoke before declaring rollback successful."
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-${{ inputs.service }}-${{ github.sha }}
+          path: |
+            deployment.json
+            previous-image.txt

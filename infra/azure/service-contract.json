@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "status": "target-contract-not-yet-implemented",
+  "services": {
+    "identity": {"context": "services/identity", "dockerfile": "Dockerfile", "port": 8080},
+    "catalog": {"context": "services/catalog", "dockerfile": "Dockerfile", "port": 8080},
+    "order": {"context": "services/order", "dockerfile": "Dockerfile", "port": 8080},
+    "fulfilment": {"context": "services/fulfilment", "dockerfile": "Dockerfile", "port": 8080},
+    "gateway": {"context": "gateway", "dockerfile": "Dockerfile", "port": 8080}
+  },
+  "liveness": "/health/live",
+  "readiness": "/health/ready",
+  "eventTopic": "domain-events",
+  "destinationProperty": "destination",
+  "configuration": ["ConnectionStrings__Default", "Jwt__Key", "Jwt__Issuer", "Jwt__Audience", "ServiceBus__FullyQualifiedNamespace", "ServiceBus__Topic", "ServiceBus__Subscription", "AZURE_CLIENT_ID", "APPLICATIONINSIGHTS_CONNECTION_STRING"],
+  "constraints": ["one DbContext and migrations per domain", "runtime role has no cross-database access", "publisher sets destination application property", "Inbox and Outbox remain service-owned", "migrations execute separately before app promotion"]
+}

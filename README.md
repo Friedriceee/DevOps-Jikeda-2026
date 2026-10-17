@@ -89,6 +89,8 @@ The smoke script walks one order from checkout and simulated payment through mer
 
 ## Quality commands
 
+Member 1 integration, local release/rollback evidence and the SWE5001 Azure handoff are documented in [member1-delivery.md](docs/devops/member1-delivery.md). The running application is currently the monolith; four-service Azure deployment remains pending extraction and account setup.
+
 ```bash
 dotnet test backend/TakeoutPlatform.sln -c Release -m:1
 npm test --prefix frontend -- --run

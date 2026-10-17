@@ -22,6 +22,10 @@ on:
         description: "After a successful deploy, roll back to the previous release and verify it, then roll forward again."
         type: boolean
         default: false
+      ephemeral_rehearsal:
+        description: "Explicitly allow an ephemeral runner rehearsal when no persistent staging is configured. This is NOT a shared staging deployment."
+        type: boolean
+        default: false
 
 # One staging release at a time; never cancel a deployment half way through.
 concurrency:
@@ -46,6 +50,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: read
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       registry: ${{ steps.meta.outputs.registry }}
@@ -55,17 +60,34 @@ jobs:
         env:
           INPUT_TAG: ${{ github.event.inputs.image_tag }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           echo "registry=ghcr.io/${owner}" >> "$GITHUB_OUTPUT"
           if [ -n "$INPUT_TAG" ]; then
+            if ! [[ "$INPUT_TAG" =~ ^sha-[0-9a-f]{12,40}$ ]]; then
+              echo "::error::Only immutable sha-<commit> image tags are accepted."
+              exit 1
+            fi
             echo "tag=${INPUT_TAG}" >> "$GITHUB_OUTPUT"
+            resolved_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/${INPUT_TAG#sha-}" --jq .sha)"
+            echo "sha=${resolved_sha}" >> "$GITHUB_OUTPUT"
             echo "build=false" >> "$GITHUB_OUTPUT"
           else
             echo "tag=sha-${HEAD_SHA:0:12}" >> "$GITHUB_OUTPUT"
             echo "build=true" >> "$GITHUB_OUTPUT"
             echo "sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
           fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Require CI, CodeQL and Trivy for the exact source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.meta.outputs.sha }}
+        run: python3 scripts/member1/release-checks.py "$RELEASE_SHA"
 
       - uses: actions/checkout@v4
         if: steps.meta.outputs.build == 'true'
@@ -76,7 +98,6 @@ jobs:
         if: steps.meta.outputs.build == 'true'
 
       - uses: docker/login-action@v3
-        if: steps.meta.outputs.build == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -106,24 +127,22 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
-      # Fail the release on any fixable HIGH/CRITICAL vulnerability.
+      # Scan all High/Critical findings, including currently unfixed findings.
       - name: Scan API image (Trivy)
-        if: steps.meta.outputs.build == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_API }}:${{ steps.meta.outputs.tag }}
           severity: HIGH,CRITICAL
-          ignore-unfixed: true
+          ignore-unfixed: false
           exit-code: "1"
           format: table
 
       - name: Scan frontend image (Trivy)
-        if: steps.meta.outputs.build == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.tag }}
           severity: HIGH,CRITICAL
-          ignore-unfixed: true
+          ignore-unfixed: false
           exit-code: "1"
           format: table
 
@@ -155,6 +174,7 @@ jobs:
       STAGING_URL: ${{ vars.STAGING_URL }}
       STAGING_SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
       ROLLBACK_DRILL: ${{ github.event.inputs.rollback_drill }}
+      EPHEMERAL_REHEARSAL: ${{ github.event.inputs.ephemeral_rehearsal }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -170,9 +190,13 @@ jobs:
           if [ -n "$STAGING_HOST" ] && [ -n "$STAGING_USER" ] && [ -n "$STAGING_SSH_KEY" ]; then
             echo "mode=remote" >> "$GITHUB_OUTPUT"
             echo "url=${STAGING_URL:-http://${STAGING_HOST}:8080}" >> "$GITHUB_OUTPUT"
-          else
+          elif [ "$EPHEMERAL_REHEARSAL" = "true" ]; then
             echo "mode=runner" >> "$GITHUB_OUTPUT"
             echo "url=http://localhost:8080" >> "$GITHUB_OUTPUT"
+            echo "::warning::Ephemeral rehearsal only; no persistent staging environment has been deployed."
+          else
+            echo "::error::Persistent staging secrets are required. Configure the host, user and SSH key, or explicitly select ephemeral_rehearsal for a temporary rehearsal."
+            exit 1
           fi
           echo "Staging target: $(grep '^mode=' "$GITHUB_OUTPUT" | cut -d= -f2)"
 

@@ -13,7 +13,9 @@ COMPOSE_FILE="${1:-docker-compose.staging.yml}"
 export IMAGE_TAG REGISTRY
 
 echo "Deploying ${REGISTRY}/takeout-{api,frontend}:${IMAGE_TAG} with ${COMPOSE_FILE}"
-docker compose -f "$COMPOSE_FILE" pull api frontend
+if [ "${PULL_IMAGES:-true}" = "true" ]; then
+  docker compose -f "$COMPOSE_FILE" pull api frontend
+fi
 docker compose -f "$COMPOSE_FILE" up -d --remove-orphans --wait --wait-timeout 240
 
 # Remember what is running so the next release knows what to roll back to.

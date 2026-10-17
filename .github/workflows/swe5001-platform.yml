@@ -1,0 +1,22 @@
+name: SWE5001 platform validation
+on:
+  pull_request:
+    branches: [main]
+    paths: ['infra/azure/**', 'scripts/member1/**', '.github/workflows/swe5001-platform.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Azure infrastructure (no deployment)
+        run: az bicep build --file infra/azure/main.bicep
+      - name: Report service readiness honestly
+        run: |
+          if python3 scripts/member1/service-preflight.py; then
+            echo "Four services and gateway build contexts are present."
+          else
+            echo "::warning::Four-service migration is pending. Infrastructure compilation does not mean Azure deployment has occurred."
+          fi

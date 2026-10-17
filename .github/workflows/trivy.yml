@@ -25,7 +25,7 @@ jobs:
           scan-ref: .
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
-          ignore-unfixed: true
+          ignore-unfixed: false
           exit-code: '1'
 
   image:
@@ -38,5 +38,5 @@ jobs:
           image-ref: ${{ vars.TRIVY_IMAGE }}
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
-          ignore-unfixed: true
+          ignore-unfixed: false
           exit-code: '1'

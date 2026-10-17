@@ -72,7 +72,8 @@ jobs:
         working-directory: backend
         run: |
           dotnet restore
-          dotnet list package --vulnerable --include-transitive
+          dotnet list package --vulnerable --include-transitive --format json --output-version 1 > vulnerability-report.json
+          python3 ../scripts/member1/dependency-gate.py vulnerability-report.json
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -92,11 +93,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Start the full stack
+      - name: Build production images
         run: |
           echo "JWT_KEY=$(openssl rand -hex 32)" >> .env
           echo "SEED_PASSWORD=Smoke-$(openssl rand -hex 8)" >> .env
-          docker compose --profile app up -d --build --wait --wait-timeout 300
+          docker compose --profile app build --pull
+      - name: Scan API production image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: takeout-api:local
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+      - name: Scan frontend production image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: takeout-frontend:local
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: '1'
+      - name: Start scanned stack
+        run: docker compose --profile app up -d --no-build --wait --wait-timeout 300
       - name: Smoke test (checkout to delivery, one order)
         run: |
           set -a; . ./.env; set +a

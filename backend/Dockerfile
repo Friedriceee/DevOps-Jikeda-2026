@@ -13,7 +13,7 @@ RUN dotnet publish src/TakeoutPlatform.Api/TakeoutPlatform.Api.csproj \
       -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
 # ---- runtime --------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine@sha256:cf6f271f1c106dcb4dd403e7b3dc03b0c508dabef348c51fd6a709b12cda69b0 AS runtime
 WORKDIR /app
 
 ENV ASPNETCORE_URLS=http://+:8080 \
