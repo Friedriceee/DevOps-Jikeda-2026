@@ -4,7 +4,7 @@ name: CD
 # works (health + end-to-end smoke) and roll back automatically if it does not.
 #
 # Triggers
-#   - after the CI workflow succeeds on main (continuous delivery to staging)
+#   - after CI succeeds on main (publish images; deploy only when enabled)
 #   - manually, to redeploy any tag, or to run a rollback drill
 
 on:
@@ -20,6 +20,10 @@ on:
         default: ""
       rollback_drill:
         description: "After a successful deploy, roll back to the previous release and verify it, then roll forward again."
+        type: boolean
+        default: false
+      deploy_to_staging:
+        description: "Deploy to the configured persistent staging server after image publication. Requires staging secrets."
         type: boolean
         default: false
       ephemeral_rehearsal:
@@ -54,16 +58,24 @@ jobs:
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
       registry: ${{ steps.meta.outputs.registry }}
+      target: ${{ steps.meta.outputs.target }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
       - name: Resolve what to deploy
         id: meta
         env:
           INPUT_TAG: ${{ github.event.inputs.image_tag }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           GH_TOKEN: ${{ github.token }}
+          STAGING_ENABLED: ${{ vars.STAGING_ENABLED }}
+          DEPLOY_TO_STAGING: ${{ github.event.inputs.deploy_to_staging }}
+          EPHEMERAL_REHEARSAL: ${{ github.event.inputs.ephemeral_rehearsal }}
+          ROLLBACK_DRILL: ${{ github.event.inputs.rollback_drill }}
         run: |
-          owner="${GITHUB_REPOSITORY_OWNER,,}"
-          echo "registry=ghcr.io/${owner}" >> "$GITHUB_OUTPUT"
+          python3 scripts/member1/cd-plan.py
           if [ -n "$INPUT_TAG" ]; then
             if ! [[ "$INPUT_TAG" =~ ^sha-[0-9a-f]{12,40}$ ]]; then
               echo "::error::Only immutable sha-<commit> image tags are accepted."
@@ -78,10 +90,6 @@ jobs:
             echo "build=true" >> "$GITHUB_OUTPUT"
             echo "sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
           fi
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
 
       - name: Require CI, CodeQL and Trivy for the exact source commit
         env:
@@ -112,6 +120,9 @@ jobs:
           context: backend
           load: true
           tags: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_API }}:${{ steps.meta.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.sha }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
@@ -124,6 +135,9 @@ jobs:
           build-args: |
             VITE_ENABLE_TEST_PAYMENT=true
           tags: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ steps.meta.outputs.sha }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
@@ -152,10 +166,34 @@ jobs:
           docker push "${{ steps.meta.outputs.registry }}/${{ env.IMAGE_API }}:${{ steps.meta.outputs.tag }}"
           docker push "${{ steps.meta.outputs.registry }}/${{ env.IMAGE_FRONTEND }}:${{ steps.meta.outputs.tag }}"
 
+      - name: Image delivery summary
+        if: always()
+        env:
+          REGISTRY: ${{ steps.meta.outputs.registry }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          TARGET: ${{ steps.meta.outputs.target }}
+          BUILD_NEW: ${{ steps.meta.outputs.build }}
+          RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "### Image delivery"
+            echo "- Result: $RESULT"
+            echo "- New image build: $BUILD_NEW"
+            echo "- API: \`$REGISTRY/$IMAGE_API:$TAG\`"
+            echo "- Frontend: \`$REGISTRY/$IMAGE_FRONTEND:$TAG\`"
+            if [ "$TARGET" = "none" ]; then
+              echo "- Deployment: not requested; no persistent staging or cloud deployment was performed."
+              echo "- Enable STAGING_ENABLED for automatic staging, or select a manual deployment/rehearsal target."
+            else
+              echo "- Requested deployment target: $TARGET (see the deployment job for its result)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # --------------------------------------------------------------- deploy ----
   deploy:
     name: Deploy to staging, verify, roll back on failure
     needs: build
+    if: needs.build.outputs.target != 'none'
     runs-on: ubuntu-latest
     environment:
       name: staging
@@ -166,15 +204,14 @@ jobs:
     env:
       REGISTRY: ${{ needs.build.outputs.registry }}
       NEW_TAG: ${{ needs.build.outputs.tag }}
-      # Optional. When all three are set the release goes to your own server over SSH;
-      # otherwise a complete stack is started on this runner (ephemeral staging).
+      # Persistent staging is opt-in. Runner rehearsal must be selected explicitly.
       STAGING_HOST: ${{ secrets.STAGING_HOST }}
       STAGING_USER: ${{ secrets.STAGING_USER }}
       STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
       STAGING_URL: ${{ vars.STAGING_URL }}
       STAGING_SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
       ROLLBACK_DRILL: ${{ github.event.inputs.rollback_drill }}
-      EPHEMERAL_REHEARSAL: ${{ github.event.inputs.ephemeral_rehearsal }}
+      DEPLOYMENT_TARGET: ${{ needs.build.outputs.target }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -187,15 +224,15 @@ jobs:
       - name: Choose the staging target
         id: target
         run: |
-          if [ -n "$STAGING_HOST" ] && [ -n "$STAGING_USER" ] && [ -n "$STAGING_SSH_KEY" ]; then
-            echo "mode=remote" >> "$GITHUB_OUTPUT"
-            echo "url=${STAGING_URL:-http://${STAGING_HOST}:8080}" >> "$GITHUB_OUTPUT"
-          elif [ "$EPHEMERAL_REHEARSAL" = "true" ]; then
+          if [ "$DEPLOYMENT_TARGET" = "runner" ]; then
             echo "mode=runner" >> "$GITHUB_OUTPUT"
             echo "url=http://localhost:8080" >> "$GITHUB_OUTPUT"
             echo "::warning::Ephemeral rehearsal only; no persistent staging environment has been deployed."
+          elif [ "$DEPLOYMENT_TARGET" = "remote" ] && [ -n "$STAGING_HOST" ] && [ -n "$STAGING_USER" ] && [ -n "$STAGING_SSH_KEY" ] && [ -n "$STAGING_SMOKE_PASSWORD" ]; then
+            echo "mode=remote" >> "$GITHUB_OUTPUT"
+            echo "url=${STAGING_URL:-http://${STAGING_HOST}:8080}" >> "$GITHUB_OUTPUT"
           else
-            echo "::error::Persistent staging secrets are required. Configure the host, user and SSH key, or explicitly select ephemeral_rehearsal for a temporary rehearsal."
+            echo "::error::Persistent staging requires host, user, SSH key and smoke password. Configure them before requesting deployment."
             exit 1
           fi
           echo "Staging target: $(grep '^mode=' "$GITHUB_OUTPUT" | cut -d= -f2)"

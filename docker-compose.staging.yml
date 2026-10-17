@@ -1,6 +1,6 @@
 # Staging release: runs pre-built, scanned images from the registry (nothing is built here).
 #
-#   IMAGE_TAG=sha-1a2b3c4d5e6f REGISTRY=ghcr.io/<owner> docker compose -f docker-compose.staging.yml up -d --wait
+#   IMAGE_TAG=sha-1a2b3c4d5e6f REGISTRY=ghcr.io/<owner>/<repository> docker compose -f docker-compose.staging.yml up -d --wait
 #
 # Required in the environment (or a .env file next to this one, never committed):
 #   POSTGRES_PASSWORD, JWT_KEY (>= 32 bytes), SEED_PASSWORD (demo accounts for smoke tests)

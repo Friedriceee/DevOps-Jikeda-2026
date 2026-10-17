@@ -39,7 +39,11 @@ Stop and wipe: `docker compose --profile app down -v`.
 
 ## GitHub setup for the CD workflow
 
-Nothing is required for **runner mode**: it needs no secrets and starts a throw-away stack on the Actions runner.
+The default CD run builds, scans and publishes images only. It does not claim a staging deployment. Images use `ghcr.io/<owner>/<repository>/takeout-api` and `takeout-frontend` (lowercase); their OCI source label links them to this repository. Do not reuse another repository's generic `ghcr.io/<owner>/takeout-api` package: its package permissions may deny this repository's `GITHUB_TOKEN`.
+
+For **runner rehearsal**, manually select `ephemeral_rehearsal=true`. It needs no staging secrets and starts a throw-away stack on the Actions runner. Its result is a rehearsal, not persistent staging.
+
+Set repository variable `STAGING_ENABLED=true` only after configuring a persistent staging environment if automatic deployment after each successful main CI is wanted. Leave it unset for the current local-demo setup. A manual `deploy_to_staging=true` requests persistent deployment without enabling automatic deployments. Conflicting manual targets and rollback drills without a target are rejected.
 
 For **remote mode** (a persistent staging server) configure, under *Settings → Secrets and variables → Actions*:
 
@@ -71,8 +75,8 @@ Also create an environment named **staging** (*Settings → Environments*) if yo
 
 ## Deploying
 
-- Automatic: every merge to `main` whose CI run is green.
-- Manual: *Actions → CD → Run workflow*. Optionally give an existing `image_tag` to redeploy it, or tick **rollback_drill** to prove the rollback path.
+- Automatic image delivery: main CI completes successfully; exact-source CI, CodeQL and Trivy must all pass. Persistent deployment runs only when `STAGING_ENABLED=true`.
+- Manual: *Actions → CD → Run workflow*. Select **deploy_to_staging** or **ephemeral_rehearsal** when deployment is intended. Optionally give an existing `image_tag`; select **rollback_drill** together with a deployment target to exercise rollback. With neither target selected and automatic staging disabled, the run only builds/scans/publishes (or validates an existing image).
 
 ## Rolling back
 
@@ -83,7 +87,7 @@ Manual, on the server:
 ```bash
 cd ~/takeout-staging
 cat .deployed-tag                      # what is running now
-IMAGE_TAG=<previous sha tag> REGISTRY=ghcr.io/<owner> bash scripts/deploy/deploy.sh
+IMAGE_TAG=<previous sha tag> REGISTRY=ghcr.io/<owner>/<repository> bash scripts/deploy/deploy.sh
 ```
 
 `staging-previous` in the registry always points at the release before the current `staging`.
@@ -92,9 +96,15 @@ IMAGE_TAG=<previous sha tag> REGISTRY=ghcr.io/<owner> bash scripts/deploy/deploy
 
 | Symptom | Check |
 |---|---|
-| Trivy fails the build | Read the table in the *Scan* step. Fixable HIGH/CRITICAL findings usually disappear by rebuilding on a newer base image; otherwise update the dependency. |
+| Trivy fails the build | Read the *Scan* table. All HIGH/CRITICAL findings block publication, including unfixed findings. Update the base image/dependency or record the unresolved issue; do not filter it out. |
 | API container unhealthy | `docker compose logs api`. Typical causes: `Jwt__Key` shorter than 32 bytes, database not reachable, a migration failing. |
 | `Seed:Password must be provided` | `SEED_PASSWORD` is empty. |
 | Smoke test fails at login | `STAGING_SMOKE_PASSWORD` differs from `SEED_PASSWORD`, or seeding is disabled. |
 | Smoke test fails at "stock reduced exactly once" | Someone else is placing orders on the same staging database while the test runs. |
 | `pull access denied` | The server is not logged in to `ghcr.io`, or the token lacks `read:packages`. |
+
+## GHCR publication incident on 17 October 2026
+
+The first CD run after PR #39 failed at `docker push` with `permission_denied: write_package`. Build, image scans and exact-source quality checks had succeeded; deployment was skipped. The existing generic packages `takeout-api` and `takeout-frontend` were linked to `Friedriceee/5001`, not `Friedriceee/DevOps-Jikeda-2026`. The repair uses a repository-specific image prefix and OCI source/revision labels, retaining `GITHUB_TOKEN` and the existing scoped `packages: write` permission. No PAT or changes to the other repository's package access are needed.
+
+A source label does not retroactively grant access to an existing package owned by a different repository. GitHub explains the association and permission rules in [Working with the Container registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry). Publication success still needs a real CD execution; local lint/tests cannot establish registry permission.
