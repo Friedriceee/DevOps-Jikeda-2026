@@ -1,0 +1,15 @@
+# Extends the default gitleaks rules.
+title = "Takeout Platform gitleaks configuration"
+
+[extend]
+useDefault = true
+
+# Fake signing keys that only exist inside unit tests (they sign tokens for an in-memory host
+# and protect nothing). They are allow-listed by exact value so any other key-like string is
+# still reported.
+[allowlist]
+description = "test-only signing keys"
+regexes = [
+  '''fresh-db-test-signing-key-0123456789abcdef''',
+  '''admin-bootstrap-test-signing-key-0123456789''',
+]

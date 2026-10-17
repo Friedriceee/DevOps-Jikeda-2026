@@ -176,7 +176,8 @@ public class FreshDatabasePostgresTests
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IHostEnvironment>(new StagingEnvironment());
         services.AddSingleton(Options.Create(new SeedOptions { Enabled = true, Password = Password }));
-        services.AddSingleton(Options.Create(new JwtOptions { Key = "fresh-db-test-signing-key-0123456789abcdef" }));
+        // test-only signing key for an in-memory host; it protects nothing
+        services.AddSingleton(Options.Create(new JwtOptions { Key = new string('k', 48) }));
         services.AddScoped<AuthService>();
         return services.BuildServiceProvider();
     }

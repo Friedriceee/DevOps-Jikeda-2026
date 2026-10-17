@@ -40,7 +40,8 @@ public class AdminBootstrapTests
         services.AddScoped<IPasswordHasher<Account>, PasswordHasher<Account>>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(Options.Create(new AdminBootstrapOptions { InitialPassword = initialPassword }));
-        services.AddSingleton(Options.Create(new JwtOptions { Key = "admin-bootstrap-test-signing-key-0123456789" }));
+        // test-only signing key for an in-memory host; it protects nothing
+        services.AddSingleton(Options.Create(new JwtOptions { Key = new string('k', 48) }));
         services.AddScoped<AuthService>();
         return services.BuildServiceProvider();
     }
