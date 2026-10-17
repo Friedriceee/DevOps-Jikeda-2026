@@ -22,7 +22,7 @@
 
 | 用户名 | 密码 | 角色 | 说明 |
 |--------|------|------|------|
-| `admin` | `Admin@12345` | Administrator | 平台种子管理员，用于登录管理后台。非生产密钥，勿写入生产环境。 |
+| `admin` | `Seed__Password` 的值（staging）；其它环境为 `Admin__InitialPassword` | Administrator | 内置管理员，用于登录管理后台。仓库里不再提交任何管理员密码；未配置密码时该账号无法登录。 |
 
 > 现有账号在迁移时默认 `IsActive = true`，不影响既有登录。
 

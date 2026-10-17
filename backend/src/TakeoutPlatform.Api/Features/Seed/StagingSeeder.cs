@@ -156,7 +156,10 @@ public static class StagingSeeder
         }
         account.Role = role;
         account.ProfileId = profileId;
-        account.IsActive = true;
+        // Only a newly created account starts active. A demo account an administrator has since
+        // disabled must stay disabled across restarts.
+        if (account.Id == 0)
+            account.IsActive = true;
         account.PasswordHash = hasher.HashPassword(account, password);
         await db.SaveChangesAsync(cancellationToken);
     }

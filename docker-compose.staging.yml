@@ -1,0 +1,69 @@
+# Staging release: runs pre-built, scanned images from the registry (nothing is built here).
+#
+#   IMAGE_TAG=sha-1a2b3c4d5e6f REGISTRY=ghcr.io/<owner> docker compose -f docker-compose.staging.yml up -d --wait
+#
+# Required in the environment (or a .env file next to this one, never committed):
+#   POSTGRES_PASSWORD, JWT_KEY (>= 32 bytes), SEED_PASSWORD (demo accounts for smoke tests)
+# Optional: STAGING_PORT (default 8080)
+#
+# Rolling back is the same command with the previous IMAGE_TAG.
+
+name: takeout-staging
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: takeout
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: takeout
+    volumes:
+      - staging-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U takeout -d takeout"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    image: ${REGISTRY:?set REGISTRY}/takeout-api:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Staging
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=takeout;Username=takeout;Password=${POSTGRES_PASSWORD}"
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY}
+      Database__MigrateOnStartup: "true"
+      Seed__Enabled: "true"
+      Seed__Password: ${SEED_PASSWORD:?set SEED_PASSWORD}
+      Payment__AllowSimulatedDecline: "true"
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /api/health HTTP/1.0\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q ' 200 '"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  frontend:
+    image: ${REGISTRY:?set REGISTRY}/takeout-frontend:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${STAGING_PORT:-8080}:8080"
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  staging-pgdata:
