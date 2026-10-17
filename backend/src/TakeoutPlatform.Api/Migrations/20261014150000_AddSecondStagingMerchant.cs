@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using TakeoutPlatform.Api.Data;
 
 #nullable disable
 
@@ -9,7 +11,13 @@ namespace TakeoutPlatform.Api.Migrations;
 /// checkout demonstration.  The login and menu inventory remain idempotent
 /// runtime seed data; this migration only guarantees the referenced merchant
 /// profile exists before those rows are created.
+///
+/// Without the [DbContext]/[Migration] attributes EF Core does not discover this
+/// class, so it never ran: a freshly created database had no merchant 2 and the
+/// staging seeder failed with a foreign-key violation on start-up.
 /// </summary>
+[DbContext(typeof(AppDbContext))]
+[Migration("20261014150000_AddSecondStagingMerchant")]
 public partial class AddSecondStagingMerchant : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
