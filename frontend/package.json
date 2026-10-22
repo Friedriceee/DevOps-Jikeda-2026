@@ -13,14 +13,14 @@
   },
   "dependencies": {
     "axios": "^1.7.7",
-    "element-plus": "^2.8.4",
+    "element-plus": "^2.14.7",
     "pinia": "^2.2.4",
-    "vue": "^3.5.11",
+    "vue": "^3.5.44",
     "vue-router": "^4.4.5"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.10",
-    "@vue/test-utils": "^2.4.6",
+    "@vue/test-utils": "^2.5.1",
     "jsdom": "^25.0.1",
     "vite": "^8.3.4",
     "vitest": "^4.1.12"
