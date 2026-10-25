@@ -1,29 +1,30 @@
-# Sprint 4 burndown and delivery ledger
+# Sprint 4 — Burndown and Delivery Ledger
 
-This is the evidence-friendly ledger for the final sprint. Replace “Planned”
-with the actual date/status during the team review; do not invent completed
-points before the corresponding PR or run exists.
+Sprint 4 closes the release and submission work rather than introducing an
+unrelated feature set. Replace the status values below with the final team
+board state and attach the corresponding CI/deployment links at release time.
 
-| Work item | Owner | Planned evidence | Status |
+| Work item | Owner | Evidence | Status |
 |---|---|---|---|
-| Complete order/payment lifecycle | member1/member2 | backend tests + staging smoke | Planned |
-| Merchant/rider fulfilment and tracking | member3/member4 | API/UI tests + demo screenshots | Planned |
-| Administrator/audit surfaces | member1/member2 | admin tests + UI evidence | Planned |
-| CI/CD and staging deployment | member1 | workflow run + health/deep-link smoke | Planned |
-| Traceability, regression, performance, security, final demo | member5 | matrix, test summaries, k6, review/retro | Local evidence complete; staging/CD pending |
+| Checkout/payment and CD carry-over | member1 | backend tests, smoke and CD workflow | Completed in current main; final deployment status to confirm |
+| Administrator accounts, coupons and order queries | member2 | admin tests and UI evidence | Completed in current main; final CI link to attach |
+| Administrator UI and audit log | member3 | frontend/admin/audit tests and screenshots | Completed in current main; final CI link to attach |
+| Order lifecycle and inventory consistency | member4 | transition, rollback and concurrency tests | Completed in current main; final integration evidence to attach |
+| Regression, security, performance and final demo package | member5 | quality gates, traceability matrix and demo evidence | Local evidence complete; persistent staging/CD evidence to confirm |
 
-## Daily update format
+## Current local evidence
 
-`YYYY-MM-DD — remaining items: N — completed: ... — blocked by: ... — evidence:`
-`<PR/CI/staging link>`
+- Latest local main commit: `41d88ed`.
+- PostgreSQL-backed HTTP smoke: 20/20 steps passed against the local API and
+  frontend; the test drove one order from checkout through rider completion.
+- A diagnostic k6 run with 10 VUs for 10 seconds passed all checks, with
+  `p(95) < 2000 ms` and zero failed requests. The required final 20-VU/30-second
+  result must be attached from the release run if it is not already recorded
+  in the report.
 
-The final row is closed only when the release gates and evidence ledger in
-`docs/quality/sprint-04-quality-gates.md` are complete.
+## Release close-out
 
-## Member 5 evidence update
-
-`2026-10-17 — remaining items: staging deployment/CD evidence — completed:
-backend 259 passed and 10 skipped, frontend 126 passed, production build,
-19-step local PostgreSQL smoke, 20-VU k6 gate, and PR #38 CI/security checks —
-evidence: commit 9892f2e; PR #38; local report
-Team3_Sprint4_Member3.docx.`
+- [ ] Insert the final GitHub Project burndown chart.
+- [ ] Link the final backend/frontend/stack/security/CodeQL CI runs.
+- [ ] Link persistent staging or clearly label local/ephemeral evidence.
+- [ ] Record the release tag and accepted open risks.

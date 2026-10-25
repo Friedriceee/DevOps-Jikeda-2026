@@ -19,7 +19,7 @@
 | 交付物 | 位置 |
 |---|---|
 | Presentation slides | [slides/](slides/) |
-| Agile 过程产物（backlog / stories / sprint plan / burndown / review / retro） | [agile/](agile/) |
+| Agile 过程产物（backlog / stories / sprint plan / burndown / review / retro） | [agile/README.md](agile/README.md) |
 | High-level design（含 分析→设计 的转化策略） | [architecture/high-level-design.md](architecture/high-level-design.md) |
 | 在范围内的 user story 详细分析与设计 | [analysis-design/](analysis-design/) |
 | 用设计模式解决的设计问题 | [architecture/design-patterns.md](architecture/design-patterns.md) |

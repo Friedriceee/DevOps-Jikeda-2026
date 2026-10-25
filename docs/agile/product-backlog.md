@@ -1,38 +1,51 @@
 # Product Backlog
 
-按模块分组、按优先级排序。状态：Todo / In Progress / In Review / Done。用 GitHub Issues 逐条建条目，这里是总览。
+This is the consolidated backlog for the final report. `Done` means the
+implementation exists in the repository and has corresponding tests or demo
+evidence. Deferred items remain visible so that the final report does not
+overstate the delivered scope.
 
-## 商家模块
+| ID | User outcome | Priority | Points | Sprint | Status |
+|---|---|---:|---:|---:|---|
+| US-01 | Merchant creates a dish | High | 5 | 1 | Done |
+| US-02 | Merchant views the dish list | High | 2 | 1 | Done |
+| US-03 | Merchant edits dish details | High | 3 | 1 | Done |
+| US-04 | Merchant deactivates or deletes a dish | Medium | 2 | 1 | Done |
+| US-05 | Merchant creates a special offer | Medium | 3 | 1 | Done |
+| US-06 | Merchant edits or deletes a special offer | Medium | 2 | 1 | Done |
+| US-07 | Merchant views special offers | Medium | 1 | 1 | Done |
+| US-08 | Merchant registers an account | High | 3 | 2 | Done |
+| US-09 | Customer registers and signs in | High | 5 | 2 | Done |
+| SEC-01 | Protected resources enforce JWT role and ownership rules | High | 3 | 2 | Done |
+| US-14 | Customer browses merchants and menus | High | 5 | 2/3 | Done |
+| US-15 | Customer manages a cart and creates an order | High | 8 | 2/3 | Done |
+| US-15-PAY | Customer confirms payment with server-owned pricing | High | 8 | 3/4 | Done |
+| US-16 | Merchant fulfils confirmed order states | High | 5 | 3/4 | Done |
+| US-17 | Rider accepts and completes delivery | High | 8 | 3/4 | Done |
+| US-18 | Administrator manages accounts, coupons and order queries | Medium | 5 | 4 | Done |
+| US-19 | Administrator reviews auditable operational events | Medium | 3 | 4 | Done |
+| US-20 | Release path validates health, security, performance and rollback | High | 5 | 4 | Evidence status to confirm |
+| US-10 | Merchant edits store profile | Medium | 2 | 2 | Deferred |
+| US-11 | Merchant manages wallet settlement | Low | 5 | — | Deferred |
+| US-13 | Merchant manages delivery area bindings | Low | 3 | — | Deferred |
 
-| ID | User Story | 优先级 | 估点 | 依赖 | 状态 | Sprint |
-|---|---|---|---|---|---|---|
-| US-01 | 商家创建菜品 | 高 | 5 | — | Done（PR #17 已合并） | 1 |
-| US-02 | 商家查看菜品列表 | 高 | 2 | US-01 | Done（随 US-01 一起实现） | 1 |
-| US-03 | 商家编辑菜品（名称/价格/分类/库存） | 高 | 3 | US-01 | Done（PR #18 已合并，与 US-04 一并实现） | 1 |
-| US-04 | 商家下架/删除菜品 | 中 | 2 | US-01 | Done（PR #18 已合并） | 1 |
-| US-05 | 商家新增满减活动 | 中 | 3 | US-01 | Done（分支 `US-05+06-ZHAO-HAOTIAN` 已合并） | 1 |
-| US-06 | 商家编辑/删除满减活动 | 中 | 2 | US-05 | Done（同上，一并实现） | 1 |
-| US-07 | 商家查看满减活动列表 | 中 | 1 | US-05 | Done（同上，一并实现） | 1 |
-| US-08 | 商家注册 | 高 | 3 | — | Done（注册接口、实体字段、迁移及自动化测试） | 2 |
-| US-09 | 顾客注册与统一登录（Account、密码哈希、JWT） | 高 | 5 | US-08 | Done（认证 Service、注册/登录 API 与测试） | 2 |
-| SEC-01 | RBAC 与资源归属保护 | 高 | 3 | US-09 | Done（JWT claims、401/403、商家/顾客接口保护） | 2 |
-| US-10 | 编辑商家信息（店铺资料） | 中 | 2 | US-08 | Todo | 2 |
-| US-11 | 商家钱包充值/提现 | 低 | 5 | US-08 | Todo | 待排 |
-| US-12 | 商家处理顾客订单（接单/统计/评价） | 中 | 5 | 依赖顾客下单模块 | Todo | 待排 |
-| US-13 | 商家配送范围/站点绑定 | 低 | 3 | 依赖骑手/平台模块 | Todo | 待排 |
+## Cross-cutting acceptance rules
 
-## 顾客模块
+- Customer, merchant, rider and administrator endpoints derive identity from
+  JWT claims and enforce role/ownership checks.
+- Server-side pricing is authoritative; payment replay is idempotent.
+- Merchant fulfilment must reach `ReadyForDelivery` before rider assignment.
+- Inventory restoration and cancellation/rejection effects are exactly once.
+- A delivery can be accepted by only one rider and ends at `Completed`.
 
-| ID | User Story | 优先级 | 估点 | 依赖 | 状态 | Sprint |
-|---|---|---|---|---|---|---|
-| US-14 | 顾客浏览商家与菜单 | 高 | 5 | — | Todo | 3 |
-| US-15 | 顾客加购物车并下单 | 高 | 8 | US-14 | In Review（购物车持久化、分组/定价与测试已完成） | 2 |
+## Evidence links
 
-## 骑手 / 平台模块
+- Detailed user-story wording: [user-stories.md](user-stories.md)
+- Sprint scope: [sprint-01-plan.md](sprint-01-plan.md),
+  [sprint-02-plan.md](sprint-02-plan.md), [sprint-03-plan.md](sprint-03-plan.md),
+  [sprint-04-plan.md](sprint-04-plan.md)
+- Implementation/test traceability: `../quality/traceability-matrix.md`
 
-| ID | User Story | 优先级 | 估点 | 依赖 | 状态 | Sprint |
-|---|---|---|---|---|---|---|
-| US-16 | 骑手接单与配送流程 | 中 | 8 | 依赖顾客下单模块 | Todo | 4 |
-| US-17 | 平台管理员审核商家/骑手 | 中 | 5 | — | Todo | 4 |
-
-> 估点用斐波那契（1/2/3/5/8/13）。范围随迭代回顾调整。分组原则见 [sprint-01-plan.md](sprint-01-plan.md)：同一 sprint 内优先安排能复用同一批实体/页面结构的 story，跨模块依赖的 story 往后排。
+The final owner should confirm point totals and deferred stories against the
+team's GitHub Project before submission; this file is the report-facing
+consolidated view.
