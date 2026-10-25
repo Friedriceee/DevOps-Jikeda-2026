@@ -20,7 +20,7 @@ onMounted(async () => {
   <section class="home-page">
     <div class="hero">
       <div class="hero-copy">
-        <span class="eyebrow">FRESH FOOD, DELIVERED</span>
+        <span class="eyebrow">YOUR NEXT MEAL, MAKE IT SIMPLE</span>
         <h1>Good food,<br><em>made simple.</em></h1>
         <p>Discover local menus, save your favourites to a persistent cart, and check out with transparent pricing.</p>
         <div class="hero-actions">
