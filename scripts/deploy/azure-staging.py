@@ -50,7 +50,10 @@ def smoke(release, label):
     env = dict(os.environ, BASE_URL='http://127.0.0.1:8080', SMOKE_PASSWORD=runtime()['SEED_PASSWORD'])
     log = SHARED / f'smoke-{label}.log'
     with log.open('w') as output:
-        result = subprocess.run(['node', str(Path(release['directory']) / 'staging-smoke.mjs')],
+        result = subprocess.run(['docker', 'run', '--rm', '--network', 'host',
+                                 '--env', 'BASE_URL', '--env', 'SMOKE_PASSWORD',
+                                 '--volume', str(Path(release['directory']) / 'staging-smoke.mjs') + ':/smoke.mjs:ro',
+                                 'node:24-alpine', 'node', '/smoke.mjs'],
                                 env=env, stdout=output, stderr=subprocess.STDOUT, text=True)
     if result.returncode:
         # HTTP error details remain in the private log rather than Actions output.
