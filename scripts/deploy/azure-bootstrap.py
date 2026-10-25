@@ -35,7 +35,7 @@ if result.returncode:
     print('DEPLOYMENT_FAILED: inspect /opt/jikeda5006/operations/deployment.log')
 else:
     for line in log.read_text().splitlines():
-        if line.startswith(('DEPLOYMENT_OK','SMOKE_OK','ROLLBACK_DRILL_OK','DATABASE_BACKUP_OK','{{')): print(line)
+        if line.startswith(('DEPLOYMENT_OK','SMOKE_OK','ROLLBACK_DRILL_OK','DATABASE_BACKUP_OK','PUBLIC_ALIAS_OK','{{')): print(line)
 raise SystemExit(result.returncode)
 BOOTSTRAP
 '''

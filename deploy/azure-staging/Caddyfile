@@ -1,4 +1,4 @@
-{$PUBLIC_HOST}:8443 {
+{$PUBLIC_HOST}:8443, {$LEGACY_PUBLIC_HOST}:8443 {
   encode zstd gzip
   header {
     X-Content-Type-Options nosniff

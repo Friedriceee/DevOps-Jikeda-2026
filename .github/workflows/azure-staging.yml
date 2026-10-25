@@ -37,7 +37,7 @@ jobs:
     env:
       AZURE_RESOURCE_GROUP: rg-jikeda5001-m1-demo
       AZURE_VM_NAME: jikeda5001-m1-vm
-      PUBLIC_URL: https://jikeda5001-m1-apy24jqzjhch2.eastus2.cloudapp.azure.com:8443
+      PUBLIC_URL: https://jikeda5006.172.200.48.100.sslip.io:8443
     steps:
       - uses: actions/checkout@v4
       - name: Resolve and verify the exact released source

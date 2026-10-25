@@ -19,6 +19,7 @@ services:
       frontend: {condition: service_healthy}
     environment:
       PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
+      LEGACY_PUBLIC_HOST: jikeda5001-m1-apy24jqzjhch2.eastus2.cloudapp.azure.com
     ports: ['8443:8443']
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
