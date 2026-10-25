@@ -11,11 +11,12 @@ import re
 import secrets
 import subprocess
 import sys
+import time
 import urllib.request
 
 ROOT = Path('/opt/jikeda5006')
 SHARED = ROOT / 'shared'
-PUBLIC_HOST = 'jikeda5001-m1-apy24jqzjhch2.eastus2.cloudapp.azure.com'
+PUBLIC_HOST = 'jikeda5006.172.200.48.100.sslip.io'
 REGISTRY = 'ghcr.io/friedriceee/devops-jikeda-2026'
 
 
@@ -32,6 +33,44 @@ def compose(release, *args, **kwargs):
 
 def runtime():
     return dict(line.split('=', 1) for line in (SHARED / 'runtime.env').read_text().splitlines() if line and not line.startswith('#'))
+
+
+def ensure_public_alias():
+    # The shared front door owns standard ACME ports. Add only this hostname;
+    # keep SWE5001's existing routes and certificate management intact.
+    container = 'jikeda5001-cloud-web-1'
+    inspected = json.loads(run(['docker', 'inspect', container], capture_output=True).stdout)[0]
+    source = Path(next(m['Source'] for m in inspected['Mounts'] if m['Destination'] == '/etc/caddy/Caddyfile'))
+    original = source.read_text()
+    block = ('# BEGIN SWE5006 PUBLIC ALIAS\n' + PUBLIC_HOST + ' {\n'
+             '  redir https://{host}:8443{uri} 308\n}\n# END SWE5006 PUBLIC ALIAS')
+    marker = r'# BEGIN SWE5006 PUBLIC ALIAS\n.*?# END SWE5006 PUBLIC ALIAS'
+    updated = re.sub(marker, lambda _: block, original, flags=re.S) if re.search(marker, original, re.S) else original.rstrip() + '\n\n' + block + '\n'
+    if updated != original:
+        candidate = SHARED / 'frontdoor-candidate.Caddyfile'
+        candidate.write_text(updated)
+        run(['docker', 'cp', str(candidate), container + ':/tmp/swe5006-domain.Caddyfile'])
+        run(['docker', 'exec', container, 'caddy', 'validate', '--config', '/tmp/swe5006-domain.Caddyfile', '--adapter', 'caddyfile'], capture_output=True)
+        (SHARED / 'frontdoor-before-alias.Caddyfile').write_text(original)
+        try:
+            # Preserve the inode used by the existing read-only bind mount.
+            source.write_text(updated)
+            run(['docker', 'exec', container, 'caddy', 'reload', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile'], capture_output=True)
+        except Exception:
+            source.write_text(original)
+            run(['docker', 'exec', container, 'caddy', 'reload', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile'], capture_output=True)
+            raise
+    # Do not follow the redirect: verify the new certificate before port 8443
+    # switches hosts. Both proxies share the existing certificate storage.
+    for attempt in range(30):
+        result = subprocess.run(['curl', '--silent', '--show-error', '--fail', '--max-time', '10',
+                                 '--head', '--resolve', PUBLIC_HOST + ':443:127.0.0.1',
+                                 'https://' + PUBLIC_HOST + '/'], text=True, capture_output=True)
+        if result.returncode == 0 and ('location: https://' + PUBLIC_HOST + ':8443/') in result.stdout.lower():
+            print('PUBLIC_ALIAS_OK ' + PUBLIC_HOST, flush=True)
+            return
+        time.sleep(2)
+    raise RuntimeError('The new hostname did not obtain a valid HTTPS certificate')
 
 
 def fingerprint(release):
@@ -118,7 +157,13 @@ def deploy(payload, drill=False):
             raise RuntimeError('Rollback drill requires a different previous release')
         if previous:
             backup(previous)
+        previous_runtime = envpath.read_text()
         try:
+            ensure_public_alias()
+            values = runtime()
+            values['PUBLIC_HOST'] = PUBLIC_HOST
+            envpath.write_text(''.join(f'{key}={value}\n' for key, value in values.items()))
+            envpath.chmod(0o600)
             apply(target)
             checks = smoke(target, 'new')
             urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=20).close()
@@ -144,6 +189,7 @@ def deploy(payload, drill=False):
             print('DEPLOYMENT_OK ' + revision, flush=True)
             print(json.dumps(proof), flush=True)
         except Exception:
+            envpath.write_text(previous_runtime)
             if previous:
                 apply(previous)
                 smoke(previous, 'failure-restoration')
