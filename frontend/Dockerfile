@@ -16,6 +16,9 @@ RUN npm run build
 # ---- runtime --------------------------------------------------------------
 # Unprivileged nginx: runs as a non-root user and listens on 8080.
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:782bb89768cc87b7f95c18b95baa1af250e5d451f26794f59363540161147c01 AS runtime
+# Apply the published Alpine fixes while keeping the runtime unprivileged.
+USER root
+RUN apk upgrade --no-cache brotli-libs libexpat libx11
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 USER 101:101
