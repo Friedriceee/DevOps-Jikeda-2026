@@ -1,0 +1,31 @@
+services:
+  db:
+    mem_limit: 384m
+    logging: &log
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
+  api:
+    mem_limit: 512m
+    logging: *log
+  frontend:
+    mem_limit: 128m
+    logging: *log
+  proxy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *log
+    depends_on:
+      frontend: {condition: service_healthy}
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?set PUBLIC_HOST}
+    ports: ['8443:8443']
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - existing-tls:/data
+      - staging-caddy-config:/config
+volumes:
+  existing-tls:
+    external: true
+    name: jikeda5001-cloud_caddy-data
+  staging-caddy-config:

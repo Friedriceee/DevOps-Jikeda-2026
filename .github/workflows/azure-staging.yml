@@ -1,0 +1,97 @@
+name: Azure staging deployment
+
+on:
+  workflow_run:
+    workflows: [CD]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: 'Existing scanned and published source SHA; empty uses main.'
+        required: false
+        default: ''
+      rollback_drill:
+        description: 'Verify rollback to the previous release and restore the new release.'
+        type: boolean
+        default: false
+
+concurrency:
+  group: swe5006-azure-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      AZURE_RESOURCE_GROUP: rg-jikeda5001-m1-demo
+      AZURE_VM_NAME: jikeda5001-m1-vm
+      PUBLIC_URL: https://jikeda5001-m1-apy24jqzjhch2.eastus2.cloudapp.azure.com:8443
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve and verify the exact released source
+        id: release
+        env:
+          INPUT_SHA: ${{ inputs.release_sha }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha="${INPUT_SHA:-$RELEASE_SHA}"
+          [[ "$sha" =~ ^[a-f0-9]{40}$ ]] || { echo 'A full source SHA is required'; exit 1; }
+          python3 scripts/member1/release-checks.py "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - uses: azure/login@v2
+        with:
+          client-id: 544afd56-8afb-4526-97fe-94b92c1bce98
+          tenant-id: ed1abbe3-6b1f-44e2-adf7-89b85759b2e4
+          subscription-id: ffbec78a-8728-40c8-ae3f-fd24d15b9a22
+      - name: Prepare deployment instructions
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          ROLLBACK_DRILL: ${{ inputs.rollback_drill }}
+        run: |
+          options=()
+          if [ "$ROLLBACK_DRILL" = true ]; then options+=(--rollback-drill); fi
+          python3 scripts/deploy/azure-bootstrap.py --revision "$RELEASE_SHA" "${options[@]}" > /tmp/deploy.sh
+      - name: Deploy to Azure and verify the complete order flow
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        run: |
+          az vm run-command invoke --resource-group "$AZURE_RESOURCE_GROUP" --name "$AZURE_VM_NAME" --command-id RunShellScript --scripts @/tmp/deploy.sh > /tmp/deployment.json
+          python3 - <<'PY'
+          import json, os
+          result=json.load(open('/tmp/deployment.json'))
+          message='\n'.join(item.get('message','') for item in result.get('value',[]))
+          print(message)
+          assert 'DEPLOYMENT_OK '+os.environ['RELEASE_SHA'] in message, 'Deployment did not verify successfully'
+          PY
+      - name: Verify public HTTPS and browser routes
+        run: |
+          curl --fail --retry 5 --retry-delay 3 "$PUBLIC_URL/api/health"
+          curl --fail "$PUBLIC_URL/healthz"
+          curl --fail "$PUBLIC_URL/customer/merchants" | grep -q '<div id="app">'
+      - name: Record release evidence
+        if: always()
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          RESULT: ${{ job.status }}
+        run: |
+          {
+            echo '### SWE5006 Azure staging'
+            echo "- Result: $RESULT"
+            echo "- Source: $RELEASE_SHA"
+            echo "- Application: $PUBLIC_URL"
+            echo '- Independent Docker project and database; SWE5001 remains on port 443.'
+            echo '- Server-generated credentials remain in the private runtime file.'
+          } >> "$GITHUB_STEP_SUMMARY"
