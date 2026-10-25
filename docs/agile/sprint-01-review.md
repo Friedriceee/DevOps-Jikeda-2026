@@ -1,27 +1,27 @@
-# Sprint 1 — 评审（Review）
+# Sprint 1 — Review
 
-> Sprint 结束时填写。
+## Review objective
 
-## 完成情况
+Establish the shared repository and CI foundation, then deliver the merchant
+dish and special-offer management slices.
 
-| Story / 任务 | 承诺 | 完成 | 说明 |
-|---|---|---|---|
-| US-01 商家创建菜品 | 是 | 待填 | |
-| 骨架 + CI/CD + 分支保护 | 是 | 待填 | |
+## Delivered scope
 
-- 承诺估点：__ ，完成估点：__
+| Story / task | Result | Evidence |
+|---|---|---|
+| US-01/US-02 dish creation and list | Completed | PR #17 and backend/frontend tests |
+| US-03/US-04 dish edit and deactivation | Completed | PR #18 and corresponding tests |
+| US-05 to US-07 special-offer CRUD | Completed | Merged feature branch and API/UI tests |
+| Shared backend/frontend skeleton and CI | Completed | Repository workflow and CI jobs |
 
-## 演示
+## Demonstration
 
-- 演示内容：商家新建一道菜品 → 列表出现
-- 观众反馈：待填
+The review flow was: merchant creates a dish, refreshes the list, edits the
+dish, deactivates it, and manages a special offer. The API contract and
+frontend validation were checked before merge.
 
-## 未完成 / 滚入下个 Sprint
+## Carry-forward
 
-- 待填
-
-## 度量
-
-- CI 通过率：__
-- 合并 PR 数：__
-- 缺陷数（新增 / 修复）：__
+Authentication, customer ordering and resource ownership were deliberately
+carried into Sprint 2. Branch-protection configuration remained a repository
+setting to confirm separately from feature completion.

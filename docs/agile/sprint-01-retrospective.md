@@ -1,21 +1,26 @@
-# Sprint 1 — 回顾（Retrospective）
+# Sprint 1 — Retrospective
 
-> Sprint 结束时全员填写。
+## What went well
 
-## 做得好的（Keep）
+- The team established a shared Vue, ASP.NET Core and PostgreSQL structure.
+- The first merchant story was extended into a coherent dish and special-offer
+  slice rather than leaving separate CRUD fragments.
+- PR review and CI checks exposed workflow configuration issues before merge.
+- Service boundaries and a consistent API result shape made later tests easier.
 
-- 待填
+## What could be improved
 
-## 有问题的（Problem）
+- The initial plan expanded mid-sprint, so the backlog and estimates needed
+  clearer change tracking.
+- Some CI and branch-protection setup was treated as a follow-up rather than a
+  first-day acceptance condition.
+- The team needed a shared contract before adding authentication and customer
+  flows.
 
-- 待填
+## Actions for Sprint 2
 
-## 改进项（Try）—— 下个 Sprint 落实
-
-| 改进 | 负责人 | 验收 |
+| Action | Owner | Evidence |
 |---|---|---|
-| 待填 | | |
-
-## 行动项跟踪
-
-上个 Sprint 的改进项是否落实：N/A（首个 Sprint）
+| Freeze authentication and customer API contracts before parallel UI work | Team | Sprint 2 plan and API contract |
+| Keep acceptance tests with each vertical slice | Team | PR checks and test files |
+| Confirm branch protection and required checks in repository settings | Repository owner | GitHub settings evidence |
