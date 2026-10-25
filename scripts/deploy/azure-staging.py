@@ -110,6 +110,12 @@ def deploy(payload, drill=False):
         target = dict(revision=revision, imageTag='sha-' + revision[:12], directory=str(directory),
                       publicUrl='https://' + PUBLIC_HOST + ':8443',
                       deployedAtUtc=datetime.datetime.now(datetime.timezone.utc).isoformat())
+        rollback_target = previous
+        saved_previous = SHARED / 'previous-release.json'
+        if drill and previous and previous['imageTag'] == target['imageTag'] and saved_previous.exists():
+            rollback_target = json.loads(saved_previous.read_text())
+        if drill and (rollback_target is None or rollback_target['imageTag'] == target['imageTag']):
+            raise RuntimeError('Rollback drill requires a different previous release')
         if previous:
             backup(previous)
         try:
@@ -119,20 +125,18 @@ def deploy(payload, drill=False):
             proof = dict(revision=revision, publicUrl=target['publicUrl'], smokeChecks=checks,
                          rollbackDrill='not requested', databaseRollback=False)
             if drill:
-                if previous is None or previous['imageTag'] == target['imageTag']:
-                    raise RuntimeError('Rollback drill requires a different previous release')
                 before = fingerprint(target)
-                apply(previous)
-                assert fingerprint(previous) == before, 'Business data changed during rollback'
-                smoke(previous, 'rollback')
-                after_old_smoke = fingerprint(previous)
+                apply(rollback_target)
+                assert fingerprint(rollback_target) == before, 'Business data changed during rollback'
+                smoke(rollback_target, 'rollback')
+                after_old_smoke = fingerprint(rollback_target)
                 apply(target)
                 assert fingerprint(target) == after_old_smoke, 'Business data changed during roll-forward'
                 smoke(target, 'roll-forward')
                 proof['rollbackDrill'] = 'passed'
-                proof['previousRevision'] = previous['revision']
+                proof['previousRevision'] = rollback_target['revision']
                 proof['dataPreservedAcrossImageChanges'] = True
-                print('ROLLBACK_DRILL_OK ' + previous['revision'] + ' -> ' + revision, flush=True)
+                print('ROLLBACK_DRILL_OK ' + rollback_target['revision'] + ' -> ' + revision, flush=True)
             if previous and previous['imageTag'] != target['imageTag']:
                 (SHARED / 'previous-release.json').write_text(json.dumps(previous, indent=2))
             currentpath.write_text(json.dumps(target, indent=2))
