@@ -157,6 +157,7 @@ def deploy(payload, drill=False):
             raise RuntimeError('Rollback drill requires a different previous release')
         if previous:
             backup(previous)
+        previous_runtime = envpath.read_text()
         try:
             ensure_public_alias()
             values = runtime()
@@ -188,6 +189,7 @@ def deploy(payload, drill=False):
             print('DEPLOYMENT_OK ' + revision, flush=True)
             print(json.dumps(proof), flush=True)
         except Exception:
+            envpath.write_text(previous_runtime)
             if previous:
                 apply(previous)
                 smoke(previous, 'failure-restoration')
