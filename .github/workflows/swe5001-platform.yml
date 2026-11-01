@@ -10,7 +10,7 @@ jobs:
   bicep:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Compile Azure infrastructure (no deployment)
         run: az bicep build --file infra/azure/main.bicep
       - name: Report service readiness honestly
